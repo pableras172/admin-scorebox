@@ -1,16 +1,22 @@
 <!--
 Sync Impact Report
-- Version change: template placeholder → 1.1.0
-- Modified principles: template placeholder → I. Entrega centrada en Laravel; template placeholder → II. Operaciones seguras por defecto; template placeholder → III. Control de cambios con pruebas primero; template placeholder → IV. Arquitectura centrada en integraciones; template placeholder → V. Sistemas observables y mantenibles
-- Added sections: Restricciones adicionales; Flujo de trabajo de desarrollo; VI. Code Standards & Patterns; VII. Security & Environment Governance
+- Version change: 1.1.0 → 1.2.0
+- Modified principles: Adición de Principio 0 (Delimitación de Ámbito: Admin & Marketing vs App Android)
+- Added sections: Ámbito de especificaciones SpecKit exclusivo para admin
 - Removed sections: none
-- Templates requiring updates: .specify/templates/plan-template.md ⚠ pending; .specify/templates/spec-template.md ⚠ pending; .specify/templates/tasks-template.md ⚠ pending
-- Follow-up TODOs: TODO(RATIFICATION_DATE): la fecha original de adopción aún no se ha registrado.
+- Templates requiring updates: none
+- Follow-up TODOs: none
 -->
 
 # Constitución de MyMusicalScores Admin
 
 ## Principios fundamentales
+
+### 0. Ámbito del Proyecto y Delimitación de Alcance (Admin & Marketing vs App Android)
+
+- **Propósito del Backoffice**: Este directorio (`admin`) contiene el panel de control web y herramientas internas de soporte, métricas y marketing para el ecosistema ScoreBox. Su objetivo es dotar al administrador de una interfaz ágil para labores de gestión, análisis de negocio, estrategias de marketing y supervisión de usuarios móviles.
+- **Alcance Exclusivo de Especificaciones (SpecKit Scope)**: Todas las especificaciones (`spec.md`), planes de arquitectura (`plan.md`) y tareas (`tasks.md`) gestionados o generados por SpecKit en este directorio atañen **única y exclusivamente al panel de administración web (`admin/`)**.
+- **No Invasión de la App Móvil Superior**: Queda estrictamente fuera de alcance modificar o interferir con el código fuente de la aplicación Android superior (`app/`). La relación con la app móvil se limita a consultar, validar y operar sobre los datos compartidos en Google Cloud Firestore mediante la capa tipada de servicios (`App\Services\Firestore\*`), garantizando siempre la compatibilidad con la app móvil.
 
 ### I. Entrega centrada en Laravel
 
@@ -110,4 +116,4 @@ Expectativas de cumplimiento:
 * **Variables de Entorno:** Todas las configuraciones sensibles (`FIREBASE_CREDENTIALS`, `FIREBASE_PROJECT_ID`) deben resolverse exclusivamente mediante `config('firebase.*')` y no con `env()` directo en el código de aplicación.
 * **Roles de Acceso al Panel:** Solo usuarios autorizados de Laravel pueden acceder a las rutas de Filament.
 
-**Versión**: 1.1.0 | **Ratificada**: TODO(RATIFICATION_DATE): la fecha original de adopción aún no se ha registrado. | **Última modificación**: 2026-08-30
+**Versión**: 1.2.0 | **Ratificada**: 2026-08-30 | **Última modificación**: 2026-09-13

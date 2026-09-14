@@ -26,8 +26,12 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')            
             ->login()
+            ->brandName('ScoreBox')
+            ->brandLogo(fn () => view('filament.admin.logo'))
+            ->brandLogoHeight('2.2rem')
+            ->favicon(fn () => asset('images/logo.png'))
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => '#6650A4',
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')

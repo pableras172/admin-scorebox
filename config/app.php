@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'Scorebox Admin Panel'),
 
     /*
     |--------------------------------------------------------------------------
@@ -122,5 +122,16 @@ return [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Marketing Test Emails
+    |--------------------------------------------------------------------------
+    |
+    | Destination email addresses for test marketing campaigns.
+    |
+    */
+
+    'test_emails' => array_values(array_filter(array_map('trim', explode(';', (string) env('APP_TEST_EMAILS', 'pruebasscorebox@gmail.com;pableras172@gmail.com'))))),
 
 ];

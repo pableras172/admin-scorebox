@@ -4,22 +4,38 @@ declare(strict_types=1);
 
 namespace App\Services\Firestore;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use RuntimeException;
 
-final class FirestoreUserGateway
+class FirestoreUserGateway
 {
     private const COLLECTION_NAME = 'users';
 
     private const MAX_LIST_LIMIT = 100;
 
+    private const CACHE_TTL_COUNTS = 1800; // 30 minutes
+
+    private const CACHE_TTL_LIST = 300; // 5 minutes
+
+    private const CACHE_TTL_DOC = 300; // 5 minutes
+
     public function __construct(
         private readonly FirestoreClientFactory $factory,
     ) {}
 
-    public function getById(string $uid): FirestoreResult
+    public function getById(string $uid, bool $fresh = false): FirestoreResult
     {
+        $cacheKey = 'firestore:users:doc:' . $uid;
+
+        if (! $fresh && Cache::has($cacheKey)) {
+            $cached = Cache::get($cacheKey);
+            if ($cached instanceof FirestoreResult && $cached->isSuccess()) {
+                return $cached;
+            }
+        }
+
         try {
             $client = $this->factory->make();
 
@@ -41,10 +57,14 @@ final class FirestoreUserGateway
 
             $normalized = FirestoreUserValidator::validate($data);
 
-            return FirestoreResult::success(
+            $result = FirestoreResult::success(
                 ScoreBoxUser::fromArray($normalized)->toArray(),
                 ['uid' => $uid, 'collection' => self::COLLECTION_NAME],
             );
+
+            Cache::put($cacheKey, $result, now()->addSeconds(self::CACHE_TTL_DOC));
+
+            return $result;
         } catch (InvalidArgumentException $exception) {
             Log::warning('Firestore user validation failed.', [
                 'uid' => $uid,
@@ -67,25 +87,44 @@ final class FirestoreUserGateway
     }
 
     /**
-     * @param array<string, mixed> $filters
+     * Count all users in the collection.
+     * Uses native Firestore aggregation count query (cost: 1 read per 1,000 index entries)
+     * and caches successful results for 30 minutes.
      */
-    public function countAll(): FirestoreResult
+    public function countAll(bool $fresh = false): FirestoreResult
     {
+        $cacheKey = 'firestore:users:count_all';
+
+        if (! $fresh && Cache::has($cacheKey)) {
+            $cached = Cache::get($cacheKey);
+            if ($cached instanceof FirestoreResult && $cached->isSuccess()) {
+                return $cached;
+            }
+        }
+
         try {
             $client = $this->factory->make();
             $collection = $client->collection(self::COLLECTION_NAME);
-            $total = 0;
 
-            foreach ($collection->documents() as $document) {
-                if ($document !== null) {
-                    $total++;
+            if (method_exists($collection, 'count')) {
+                $total = (int) $collection->count();
+            } else {
+                $total = 0;
+                foreach ($collection->documents() as $document) {
+                    if ($document !== null) {
+                        $total++;
+                    }
                 }
             }
 
-            return FirestoreResult::success($total, [
+            $result = FirestoreResult::success($total, [
                 'collection' => self::COLLECTION_NAME,
                 'count' => $total,
             ]);
+
+            Cache::put($cacheKey, $result, now()->addSeconds(self::CACHE_TTL_COUNTS));
+
+            return $result;
         } catch (RuntimeException|\Throwable $exception) {
             Log::error('Firestore user count failed.', [
                 'collection' => self::COLLECTION_NAME,
@@ -98,26 +137,48 @@ final class FirestoreUserGateway
         }
     }
 
-    public function countByPremiumStatus(): FirestoreResult
+    /**
+     * Count users by premium status.
+     * Uses native Firestore aggregation count queries and caches successful results for 30 minutes.
+     */
+    public function countByPremiumStatus(bool $fresh = false): FirestoreResult
     {
+        $cacheKey = 'firestore:users:count_by_premium';
+
+        if (! $fresh && Cache::has($cacheKey)) {
+            $cached = Cache::get($cacheKey);
+            if ($cached instanceof FirestoreResult && $cached->isSuccess()) {
+                return $cached;
+            }
+        }
+
         try {
             $client = $this->factory->make();
+            $collection = $client->collection(self::COLLECTION_NAME);
 
-            $premiumCount = 0;
-            foreach ($client->collection(self::COLLECTION_NAME)->where('isPremium', '==', true)->documents() as $document) {
-                if ($document !== null) {
-                    $premiumCount++;
+            $premiumQuery = $collection->where('isPremium', '==', true);
+            $freeQuery = $collection->where('isPremium', '==', false);
+
+            if (method_exists($premiumQuery, 'count')) {
+                $premiumCount = (int) $premiumQuery->count();
+                $freeCount = (int) $freeQuery->count();
+            } else {
+                $premiumCount = 0;
+                foreach ($premiumQuery->documents() as $document) {
+                    if ($document !== null) {
+                        $premiumCount++;
+                    }
+                }
+
+                $freeCount = 0;
+                foreach ($freeQuery->documents() as $document) {
+                    if ($document !== null) {
+                        $freeCount++;
+                    }
                 }
             }
 
-            $freeCount = 0;
-            foreach ($client->collection(self::COLLECTION_NAME)->where('isPremium', '==', false)->documents() as $document) {
-                if ($document !== null) {
-                    $freeCount++;
-                }
-            }
-
-            return FirestoreResult::success([
+            $result = FirestoreResult::success([
                 'premium' => $premiumCount,
                 'free' => $freeCount,
             ], [
@@ -125,6 +186,10 @@ final class FirestoreUserGateway
                 'premium_count' => $premiumCount,
                 'free_count' => $freeCount,
             ]);
+
+            Cache::put($cacheKey, $result, now()->addSeconds(self::CACHE_TTL_COUNTS));
+
+            return $result;
         } catch (RuntimeException|\Throwable $exception) {
             Log::error('Firestore premium/free user count failed.', [
                 'collection' => self::COLLECTION_NAME,
@@ -137,12 +202,21 @@ final class FirestoreUserGateway
         }
     }
 
-    public function list(array $filters = [], int $limit = 25): FirestoreResult
+    public function list(array $filters = [], int $limit = 25, bool $fresh = false): FirestoreResult
     {
         if ($limit < 1 || $limit > self::MAX_LIST_LIMIT) {
             return FirestoreResult::failure('INVALID_LIMIT', 'The Firestore query limit must be between 1 and 100.', [
                 'limit' => $limit,
             ]);
+        }
+
+        $cacheKey = 'firestore:users:list:' . md5(json_encode($filters) . ':' . $limit);
+
+        if (! $fresh && Cache::has($cacheKey)) {
+            $cached = Cache::get($cacheKey);
+            if ($cached instanceof FirestoreResult && $cached->isSuccess()) {
+                return $cached;
+            }
         }
 
         try {
@@ -189,11 +263,15 @@ final class FirestoreUserGateway
                 'sample' => array_slice($users, 0, 2),
             ]);
 
-            return FirestoreResult::success($users, [
+            $result = FirestoreResult::success($users, [
                 'limit' => $limit,
                 'count' => count($users),
                 'collection' => self::COLLECTION_NAME,
             ]);
+
+            Cache::put($cacheKey, $result, now()->addSeconds(self::CACHE_TTL_LIST));
+
+            return $result;
         } catch (InvalidArgumentException $exception) {
             Log::warning('Firestore user list validation failed.', [
                 'filters' => $filters,
@@ -217,6 +295,12 @@ final class FirestoreUserGateway
                 'limit' => $limit,
             ]);
         }
+    }
+
+    public function clearCache(): void
+    {
+        Cache::forget('firestore:users:count_all');
+        Cache::forget('firestore:users:count_by_premium');
     }
 
     private function maskSensitiveFields(array $payload): array
