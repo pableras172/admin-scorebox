@@ -69,6 +69,13 @@
             text-decoration: none !important;
             font-weight: 700 !important;
         }
+        .content img {
+            max-width: 100% !important;
+            height: auto !important;
+            border-radius: 8px;
+            display: block;
+            margin: 16px auto;
+        }
         .content blockquote {
             margin: 16px 0;
             padding: 12px 18px;
@@ -114,7 +121,7 @@
                              width="600">
                     </div>
                     <div class="content">
-                        {!! $content !!}
+                        {!! \App\Models\MarketingCampaign::processContentForEmail($content, $message ?? null) !!}
                     </div>
                     <div class="footer">
                         <p>Has recibido este correo electrónico porque eres usuario registrado en la aplicación <strong>ScoreBox</strong>.</p>

@@ -160,19 +160,120 @@ final class MarketingCampaign extends Model
     }
 
     /**
+     * Creates a TipTap editor instance configured with all supported nodes and marks
+     * including Images, Links, Underline, and Tables.
+     */
+    public static function createTipTapEditor(): \Tiptap\Editor
+    {
+        return new \Tiptap\Editor([
+            'extensions' => [
+                new \Tiptap\Extensions\StarterKit(),
+                new \Tiptap\Nodes\Image(),
+                new \Tiptap\Marks\Link(),
+                new \Tiptap\Marks\Underline(),
+                new \Tiptap\Nodes\Table(),
+                new \Tiptap\Nodes\TableRow(),
+                new \Tiptap\Nodes\TableCell(),
+                new \Tiptap\Nodes\TableHeader(),
+            ],
+        ]);
+    }
+
+    /**
+     * Safely renders TipTap JSON, array document, or HTML content to HTML string.
+     * Prevents DOMParser errors on empty or blank input.
+     */
+    public static function renderTipTapToHtml(mixed $content): string
+    {
+        if (blank($content)) {
+            return '';
+        }
+
+        if (is_array($content)) {
+            return self::createTipTapEditor()->setContent($content)->getHTML();
+        }
+
+        $stringContent = (string) $content;
+        $trimmed = trim($stringContent);
+
+        if ($trimmed === '') {
+            return '';
+        }
+
+        if (str_starts_with($trimmed, '{"type":"doc"')) {
+            $decoded = json_decode($trimmed, true);
+            if (is_array($decoded)) {
+                return self::createTipTapEditor()->setContent($decoded)->getHTML();
+            }
+        }
+
+        return $stringContent;
+    }
+
+    /**
      * Returns campaign content rendered to HTML.
      * If content was stored as TipTap JSON, it converts it to HTML.
      */
     public function getHtmlContent(): string
     {
-        $content = (string) $this->content;
-        if (str_starts_with(trim($content), '{"type":"doc"')) {
-            $decoded = json_decode($content, true);
-            if (is_array($decoded)) {
-                return (new \Tiptap\Editor())->setContent($decoded)->getHTML();
+        return self::renderTipTapToHtml($this->content);
+    }
+
+    /**
+     * Resolves an <img> src attribute to an absolute local file path if it points to a local file.
+     */
+    public static function resolveLocalImagePath(string $src): ?string
+    {
+        $parsed = parse_url($src, PHP_URL_PATH);
+        $path = $parsed ? $parsed : $src;
+        $path = ltrim($path, '/');
+
+        // Check if inside public storage (e.g. storage/marketing-campaigns/xxx.gif)
+        if (str_starts_with($path, 'storage/')) {
+            $storageRelative = substr($path, strlen('storage/'));
+            $fullPath = storage_path('app/public/' . $storageRelative);
+            if (file_exists($fullPath) && is_file($fullPath)) {
+                return $fullPath;
             }
         }
 
-        return $content;
+        // Check if inside public/ (e.g. images/headerMail.png)
+        $publicFullPath = public_path($path);
+        if (file_exists($publicFullPath) && is_file($publicFullPath)) {
+            return $publicFullPath;
+        }
+
+        return null;
+    }
+
+    /**
+     * Processes HTML content for email delivery, embedding local images (GIF, JPG, PNG)
+     * as CID inline attachments when a mail message is provided, or ensuring absolute URLs.
+     */
+    public static function processContentForEmail(string $content, mixed $message = null): string
+    {
+        return (string) preg_replace_callback(
+            '/<img\b([^>]*?)\bsrc=["\']([^"\']+)["\']([^>]*?)>/i',
+            function (array $matches) use ($message): string {
+                $prefix = $matches[1];
+                $src = $matches[2];
+                $suffix = $matches[3];
+
+                $localFile = self::resolveLocalImagePath($src);
+
+                if ($localFile && file_exists($localFile) && is_object($message) && method_exists($message, 'embed')) {
+                    $newSrc = $message->embed($localFile);
+                } elseif ($localFile && file_exists($localFile)) {
+                    $newSrc = asset(str_replace([public_path() . '/', public_path() . '\\'], '', $localFile));
+                } elseif (! str_starts_with($src, 'http://') && ! str_starts_with($src, 'https://') && ! str_starts_with($src, 'data:') && ! str_starts_with($src, 'cid:')) {
+                    $newSrc = url($src);
+                } else {
+                    $newSrc = $src;
+                }
+
+                return "<img{$prefix}src=\"{$newSrc}\"{$suffix}>";
+            },
+            $content
+        );
     }
 }

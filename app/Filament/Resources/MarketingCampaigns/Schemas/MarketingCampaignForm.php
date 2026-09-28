@@ -115,6 +115,31 @@ class MarketingCampaignForm
                         RichEditor::make('content')
                             ->label('Contenido del correo')
                             ->placeholder('Escribe aquí el contenido del mensaje...')
+                            ->fileAttachmentsDisk('public')
+                            ->fileAttachmentsDirectory('marketing-campaigns')
+                            ->fileAttachmentsVisibility('public')
+                            ->fileAttachmentsAcceptedFileTypes([
+                                'image/jpeg',
+                                'image/png',
+                                'image/gif',
+                                'image/webp',
+                            ])
+                            ->fileAttachmentsMaxSize(10240)
+                            ->toolbarButtons([
+                                'attachFiles',
+                                'bold',
+                                'italic',
+                                'underline',
+                                'strike',
+                                'link',
+                                'heading',
+                                'bulletList',
+                                'orderedList',
+                                'blockquote',
+                                'codeBlock',
+                                'undo',
+                                'redo',
+                            ])
                             ->required()
                             ->columnSpanFull()
                             ->visible(fn (Get $get): bool => $get('editor_mode') === 'visual')
@@ -134,11 +159,12 @@ class MarketingCampaignForm
                                 },
                             ])
                             ->helperText(function (Get $get): string {
+                                $imgHelp = 'Puedes adjuntar imágenes y GIFs (.gif, .jpg, .png) usando el botón de adjuntar archivos.';
                                 if ($get('campaign_type') === MarketingCampaign::TYPE_PROMOTIONAL_CODE) {
-                                    return 'Puedes utilizar {{name}} para el nombre y {{promotioncode}} para inyectar el código promocional o enlace de canjeo directo.';
+                                    return "Puedes utilizar {{name}} para el nombre y {{promotioncode}} para inyectar el código promocional. {$imgHelp}";
                                 }
 
-                                return 'Puedes utilizar {{name}} en cualquier lugar del texto para personalizar el saludo.';
+                                return "Puedes utilizar {{name}} para personalizar el saludo. {$imgHelp}";
                             }),
 
                         Textarea::make('content')
@@ -155,7 +181,7 @@ class MarketingCampaignForm
                                 if (str_starts_with(trim($val), '{"type":"doc"')) {
                                     $decoded = json_decode($val, true);
                                     if (is_array($decoded)) {
-                                        return (new Editor())->setContent($decoded)->getHTML();
+                                        return MarketingCampaign::createTipTapEditor()->setContent($decoded)->getHTML();
                                     }
                                 }
 
@@ -176,11 +202,12 @@ class MarketingCampaignForm
                                 },
                             ])
                             ->helperText(function (Get $get): string {
+                                $imgHelp = 'Puedes añadir imágenes y GIFs (.gif, .jpg, .png) mediante <img src="..." style="max-width: 100%; border-radius: 8px;"> (se embeben automáticamente al enviar).';
                                 if ($get('campaign_type') === MarketingCampaign::TYPE_PROMOTIONAL_CODE) {
-                                    return 'Modo código HTML: Ideal para pegar plantillas completas con tablas y estilos inline. Recuerda incluir {{promotioncode}} y {{name}}.';
+                                    return "Modo código HTML: Ideal para plantillas completas con tablas, estilos e imágenes. Recuerda incluir {{promotioncode}} y {{name}}. {$imgHelp}";
                                 }
 
-                                return 'Modo código HTML: Ideal para pegar plantillas personalizadas. Puedes utilizar {{name}} para personalizar el saludo.';
+                                return "Modo código HTML: Puedes personalizar el contenido y añadir imágenes (.gif, .jpg, .png). {$imgHelp}";
                             }),
                     ]),
 

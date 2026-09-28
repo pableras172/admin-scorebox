@@ -162,6 +162,57 @@ final class MarketingCampaignFormTest extends TestCase
 
         $this->assertStringContainsString('Hola músico desde TipTap', $jsonCampaign->getHtmlContent());
         $this->assertStringStartsWith('<p>', $jsonCampaign->getHtmlContent());
+
+        // 3. TipTap JSON with image node
+        $jsonWithImage = new MarketingCampaign([
+            'content' => json_encode([
+                'type' => 'doc',
+                'content' => [
+                    [
+                        'type' => 'image',
+                        'attrs' => [
+                            'src' => '/storage/marketing-campaigns/test.gif',
+                            'alt' => 'Test GIF',
+                        ],
+                    ],
+                ],
+            ]),
+        ]);
+
+        $this->assertStringContainsString('test.gif', $jsonWithImage->getHtmlContent());
+    }
+
+    public function test_process_content_for_email_preserves_external_urls(): void
+    {
+        $input = '<p>Mira este GIF: <img src="https://media.giphy.com/media/sample/giphy.gif" alt="Animated"></p>';
+        $output = MarketingCampaign::processContentForEmail($input);
+
+        $this->assertStringContainsString('src="https://media.giphy.com/media/sample/giphy.gif"', $output);
+    }
+
+    public function test_process_content_for_email_embeds_local_images_with_message(): void
+    {
+        $input = '<p>Logo: <img src="/images/headerMail.png" alt="Header"></p>';
+
+        $fakeMessage = new class {
+            public function embed(string $file): string
+            {
+                return 'cid:embedded-header-id';
+            }
+        };
+
+        $output = MarketingCampaign::processContentForEmail($input, $fakeMessage);
+
+        $this->assertStringContainsString('src="cid:embedded-header-id"', $output);
+    }
+
+    public function test_process_content_for_email_normalizes_relative_url_without_message(): void
+    {
+        $input = '<p>Foto: <img src="/images/headerMail.png" alt="Header"></p>';
+        $output = MarketingCampaign::processContentForEmail($input, null);
+
+        $this->assertStringContainsString('http', $output);
+        $this->assertStringContainsString('headerMail.png', $output);
     }
 }
 
