@@ -79,6 +79,9 @@
         }
     },
     "config": {
+        "platform": {
+            "ext-grpc": "1.60.0"
+        },
         "optimize-autoloader": true,
         "preferred-install": "dist",
         "sort-packages": true,
