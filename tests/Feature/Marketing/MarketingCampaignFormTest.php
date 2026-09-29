@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Marketing;
 
+use App\Filament\Resources\MarketingCampaigns\Pages\CreateMarketingCampaign;
 use App\Models\MarketingCampaign;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class MarketingCampaignFormTest extends TestCase
@@ -30,6 +32,40 @@ final class MarketingCampaignFormTest extends TestCase
             'campaign_type' => MarketingCampaign::TYPE_PROMOTIONAL_CODE,
             'exclude_previous_promo_recipients' => true,
         ]);
+    }
+
+    public function test_it_safely_persists_campaign_when_content_is_provided_as_tiptap_array(): void
+    {
+        $tiptapContent = [
+            'type' => 'doc',
+            'content' => [
+                [
+                    'type' => 'paragraph',
+                    'content' => [
+                        [
+                            'type' => 'text',
+                            'text' => 'Gracias por instalar ScoreBox',
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $campaign = MarketingCampaign::create([
+            'subject' => 'Gracias por instalar ScoreBox',
+            'content' => $tiptapContent,
+            'target_segment' => MarketingCampaign::SEGMENT_ALL,
+            'campaign_type' => MarketingCampaign::TYPE_STANDARD,
+            'is_test' => true,
+        ]);
+
+        $this->assertDatabaseHas('marketing_campaigns', [
+            'id' => $campaign->id,
+            'subject' => 'Gracias por instalar ScoreBox',
+        ]);
+        $this->assertIsString($campaign->content);
+        $this->assertStringContainsString('Gracias por instalar ScoreBox', $campaign->content);
+        $this->assertStringContainsString('<p>', $campaign->content);
     }
 
     public function test_it_handles_array_content_without_error_in_promo_code_validation(): void
@@ -125,7 +161,7 @@ final class MarketingCampaignFormTest extends TestCase
 
     public function test_marketing_campaign_form_schema_configures_editor_mode_and_textarea(): void
     {
-        \Livewire\Livewire::test(\App\Filament\Resources\MarketingCampaigns\Pages\CreateMarketingCampaign::class)
+        Livewire::test(CreateMarketingCampaign::class)
             ->assertFormFieldExists('editor_mode')
             ->assertFormFieldExists('content')
             ->fillForm([
@@ -194,7 +230,8 @@ final class MarketingCampaignFormTest extends TestCase
     {
         $input = '<p>Logo: <img src="/images/headerMail.png" alt="Header"></p>';
 
-        $fakeMessage = new class {
+        $fakeMessage = new class
+        {
             public function embed(string $file): string
             {
                 return 'cid:embedded-header-id';
@@ -215,4 +252,3 @@ final class MarketingCampaignFormTest extends TestCase
         $this->assertStringContainsString('headerMail.png', $output);
     }
 }
-

@@ -16,9 +16,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
-use Tiptap\Editor;
 
 class MarketingCampaignForm
 {
@@ -144,6 +142,7 @@ class MarketingCampaignForm
                             ->columnSpanFull()
                             ->visible(fn (Get $get): bool => $get('editor_mode') === 'visual')
                             ->dehydrated(fn (Get $get): bool => $get('editor_mode') === 'visual')
+                            ->dehydrateStateUsing(fn (mixed $state): string => MarketingCampaign::renderTipTapToHtml($state))
                             ->rules([
                                 fn (Get $get): Closure => function (string $attribute, mixed $value, Closure $fail) use ($get): void {
                                     if ($get('campaign_type') === MarketingCampaign::TYPE_PROMOTIONAL_CODE) {

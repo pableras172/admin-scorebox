@@ -5,26 +5,44 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Tiptap\Editor;
+use Tiptap\Extensions\StarterKit;
+use Tiptap\Marks\Link;
+use Tiptap\Marks\Underline;
+use Tiptap\Nodes\Image;
+use Tiptap\Nodes\Table;
+use Tiptap\Nodes\TableCell;
+use Tiptap\Nodes\TableHeader;
+use Tiptap\Nodes\TableRow;
 
 final class MarketingCampaign extends Model
 {
     use HasFactory;
 
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_QUEUED = 'queued';
+
     public const STATUS_SENDING = 'sending';
+
     public const STATUS_SENT = 'sent';
+
     public const STATUS_TEST_SENT = 'test_sent';
+
     public const STATUS_FAILED = 'failed';
 
     public const TYPE_STANDARD = 'standard';
+
     public const TYPE_PROMOTIONAL_CODE = 'promotional_code';
 
     public const SEGMENT_ALL = 'all';
+
     public const SEGMENT_FREE = 'free';
+
     public const SEGMENT_PREMIUM = 'premium';
 
     /**
@@ -74,12 +92,25 @@ final class MarketingCampaign extends Model
     }
 
     /**
+     * Interact with the campaign content attribute.
+     * Ensures any content (TipTap array document, JSON, or raw HTML) is cleanly converted to an HTML string.
+     *
+     * @return Attribute<string, mixed>
+     */
+    protected function content(): Attribute
+    {
+        return Attribute::make(
+            set: fn (mixed $value): string => self::renderTipTapToHtml($value),
+        );
+    }
+
+    /**
      * Determine if this campaign is a test campaign.
      */
-     public function isTest(): bool
-     {
-         return (bool) $this->is_test;
-     }
+    public function isTest(): bool
+    {
+        return (bool) $this->is_test;
+    }
 
     /**
      * Determine if this campaign distributes promotional codes.
@@ -118,7 +149,7 @@ final class MarketingCampaign extends Model
     /**
      * Scope for draft campaigns.
      *
-     * @param Builder<MarketingCampaign> $query
+     * @param  Builder<MarketingCampaign>  $query
      * @return Builder<MarketingCampaign>
      */
     public function scopeDrafts(Builder $query): Builder
@@ -129,7 +160,7 @@ final class MarketingCampaign extends Model
     /**
      * Scope for sent campaigns.
      *
-     * @param Builder<MarketingCampaign> $query
+     * @param  Builder<MarketingCampaign>  $query
      * @return Builder<MarketingCampaign>
      */
     public function scopeSent(Builder $query): Builder
@@ -140,7 +171,7 @@ final class MarketingCampaign extends Model
     /**
      * Scope for test campaigns.
      *
-     * @param Builder<MarketingCampaign> $query
+     * @param  Builder<MarketingCampaign>  $query
      * @return Builder<MarketingCampaign>
      */
     public function scopeTests(Builder $query): Builder
@@ -151,7 +182,7 @@ final class MarketingCampaign extends Model
     /**
      * Scope for real (production) campaigns.
      *
-     * @param Builder<MarketingCampaign> $query
+     * @param  Builder<MarketingCampaign>  $query
      * @return Builder<MarketingCampaign>
      */
     public function scopeReal(Builder $query): Builder
@@ -163,18 +194,18 @@ final class MarketingCampaign extends Model
      * Creates a TipTap editor instance configured with all supported nodes and marks
      * including Images, Links, Underline, and Tables.
      */
-    public static function createTipTapEditor(): \Tiptap\Editor
+    public static function createTipTapEditor(): Editor
     {
-        return new \Tiptap\Editor([
+        return new Editor([
             'extensions' => [
-                new \Tiptap\Extensions\StarterKit(),
-                new \Tiptap\Nodes\Image(),
-                new \Tiptap\Marks\Link(),
-                new \Tiptap\Marks\Underline(),
-                new \Tiptap\Nodes\Table(),
-                new \Tiptap\Nodes\TableRow(),
-                new \Tiptap\Nodes\TableCell(),
-                new \Tiptap\Nodes\TableHeader(),
+                new StarterKit,
+                new Image,
+                new Link,
+                new Underline,
+                new Table,
+                new TableRow,
+                new TableCell,
+                new TableHeader,
             ],
         ]);
     }
@@ -231,7 +262,7 @@ final class MarketingCampaign extends Model
         // Check if inside public storage (e.g. storage/marketing-campaigns/xxx.gif)
         if (str_starts_with($path, 'storage/')) {
             $storageRelative = substr($path, strlen('storage/'));
-            $fullPath = storage_path('app/public/' . $storageRelative);
+            $fullPath = storage_path('app/public/'.$storageRelative);
             if (file_exists($fullPath) && is_file($fullPath)) {
                 return $fullPath;
             }
@@ -264,7 +295,7 @@ final class MarketingCampaign extends Model
                 if ($localFile && file_exists($localFile) && is_object($message) && method_exists($message, 'embed')) {
                     $newSrc = $message->embed($localFile);
                 } elseif ($localFile && file_exists($localFile)) {
-                    $newSrc = asset(str_replace([public_path() . '/', public_path() . '\\'], '', $localFile));
+                    $newSrc = asset(str_replace([public_path().'/', public_path().'\\'], '', $localFile));
                 } elseif (! str_starts_with($src, 'http://') && ! str_starts_with($src, 'https://') && ! str_starts_with($src, 'data:') && ! str_starts_with($src, 'cid:')) {
                     $newSrc = url($src);
                 } else {
