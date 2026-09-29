@@ -131,6 +131,79 @@ Accede al panel administrativo navegando a: [http://localhost:8000/admin](http:/
 
 ---
 
+## 🚀 Checklist de Despliegue en Producción (Plesk / Servidor Web)
+
+### 📌 A. Configuración Inicial (Solo la primera vez)
+
+1. [ ] **DNS**: Añadir registro tipo `A` en el proveedor del dominio (`GoDaddy` / proveedor DNS) para `admin.scorebox.pro` apuntando a la IP pública del servidor.
+2. [ ] **Document Root**: Configurar en Plesk que la raíz del documento apunte a `/public` (ej. `/var/www/vhosts/scorebox.pro/admin.scorebox.pro/public`).
+3. [ ] **Certificado SSL**: Emitir e instalar el certificado SSL (Let's Encrypt) en Plesk para `admin.scorebox.pro`.
+4. [ ] **Variables de Entorno (`.env`)**:
+   - `APP_ENV=production` y `APP_DEBUG=false`
+   - `APP_URL=https://admin.scorebox.pro`
+   - Clave de aplicación generada (`php artisan key:generate`)
+   - `DB_CONNECTION=sqlite`
+   - Configuración SMTP de **Brevo** (`MAIL_HOST=smtp-relay.brevo.com`, puerto `587`, credenciales y remitente validado).
+   - Variables de **Firebase / Firestore** (`FIREBASE_PROJECT_ID` y ruta a `FIREBASE_CREDENTIALS`).
+5. [ ] **Credenciales de Firebase**: Subir el archivo JSON de la cuenta de servicio a una ruta segura fuera del acceso público (ej. `storage/app/firebase/service-account.json`).
+6. [ ] **Base de Datos SQLite & Permisos**:
+   ```bash
+   touch database/database.sqlite
+   chmod -R 775 storage bootstrap/cache database
+   chmod 664 database/database.sqlite
+   ```
+7. [ ] **Migraciones Iniciales**:
+   ```bash
+   php artisan migrate --force
+   ```
+8. [ ] **Crear Usuario Administrador de Filament**:
+   ```bash
+   php artisan make:filament-user --name="Admin" --email="info@scorebox.pro" --password="TuPasswordSeguro"
+   ```
+9. [ ] **Cron / Tarea Programada en Plesk**:
+   - Añadir en *Tareas Programadas* (*Scheduled Tasks*) cada minuto:
+     ```bash
+     cd /ruta-a-tu-proyecto && php artisan schedule:run >> /dev/null 2>&1
+     ```
+
+---
+
+### 🔄 B. Checklist Post-Despliegue (En cada actualización / `git pull`)
+
+Cada vez que se suban cambios al repositorio y se despliegue una nueva versión en producción, ejecutar en orden:
+
+```bash
+# 1. Obtener la última versión del código
+git pull origin main
+
+# 2. Instalar / actualizar dependencias de Composer sin paquetes de desarrollo
+composer install --no-dev --optimize-autoloader
+
+# 3. Ejecutar nuevas migraciones de base de datos
+php artisan migrate --force
+
+# 4. Actualizar assets publicados de Filament
+php artisan filament:upgrade
+
+# 5. Compilar assets de frontend (si hubo cambios en estilos, iconos o vistas)
+npm run build
+
+# 6. Limpiar y re-generar cachés de configuración, rutas y vistas optimizadas
+php artisan optimize:clear
+php artisan optimize
+
+# 7. Reiniciar colas de trabajo (si hay procesos en segundo plano)
+php artisan queue:restart
+
+# 8. Asegurar permisos de carpetas críticas
+chmod -R 775 storage bootstrap/cache database
+chmod 664 database/database.sqlite
+```
+
+> 💡 **Tip para Plesk**: En la pestaña **Despliegue** (*Deployment*) de Plesk Laravel Toolkit, puedes automatizar esta secuencia para que se ejecute con un solo clic en cada actualización.
+
+---
+
 ## 🧪 Pruebas y Calidad de Código
 
 Ejecutar la suite de pruebas automatizadas:
