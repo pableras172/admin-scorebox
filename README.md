@@ -1,58 +1,152 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# ScoreBox Admin - Panel de Administración & Backoffice
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+[![GitHub Repository](https://img.shields.io/badge/GitHub-pableras172%2Fadmin--scorebox-181717?style=flat&logo=github)](https://github.com/pableras172/admin-scorebox)
+[![Laravel Version](https://img.shields.io/badge/Laravel-13.x-FF2D20?style=flat&logo=laravel)](https://laravel.com)
+[![Filament Version](https://img.shields.io/badge/Filament-5.x-F59E0B?style=flat&logo=filament)](https://filamentphp.com)
+[![PHP Version](https://img.shields.io/badge/PHP-%5E8.3-777BB4?style=flat&logo=php)](https://php.net)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## About Laravel
+Panel de administración web y backoffice para el ecosistema **ScoreBox** ([MyMusicalScores](https://github.com/pableras172/admin-scorebox)). Proporciona una interfaz centralizada y ágil para la gestión operativa, supervisión de métricas, soporte y ejecución de estrategias de marketing sobre la base de datos de producción de la aplicación móvil.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 🚀 Características Principales
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **👥 Gestión de Usuarios Móviles (`ScoreBoxUsers`)**:
+  - Consulta y administración de usuarios almacenados en **Google Cloud Firestore**.
+  - Filtrado por estado de suscripción (*Free* vs. *Premium*), actividad y fecha de registro.
+  - Interacción segura mediante DTOs y una capa tipada de servicios para preservar la integridad de datos de los clientes Android.
 
-## Learning Laravel
+- **🎟️ Gestión de Códigos Promocionales**:
+  - Creación, seguimiento y control de códigos promocionales.
+  - Importación masiva de códigos mediante importadores dedicados.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- **📢 Campañas de Marketing & Emailing**:
+  - Segmentación de audiencias móviles a través de `CampaignAudienceResolver`.
+  - Configuración y despacho de campañas dirigidas a segmentos específicos de usuarios.
+  - Registro y trazabilidad de envíos.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- **🛡️ Gestión de Bajas (`Email Unsubscribes`)**:
+  - Listas de exclusión y cumplimiento normativo para la gestión de solicitudes de baja de correo.
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+- **📊 Métricas y Dashboard en Tiempo Real**:
+  - Widgets interactivos con estadísticas de uso de ScoreBox, distribución de planes y últimos usuarios registrados.
 
-## Agentic Development
+---
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## 🏛️ Arquitectura & Principios de Integración
+
+1. **Modelo Dual de Usuarios**:
+   - **`Users` (Laravel)**: Administradores y operadores autorizados para autenticarse en el panel administrativo (almacenados en la base de datos relacional de la aplicación).
+   - **`ScoreBoxUsers` (Firestore)**: Usuarios finales de la aplicación móvil publicados en Play Store (almacenados en Google Cloud Firestore).
+2. **Aislamiento de Servicios (Service Layer Isolation)**:
+   - Los componentes visuales de Filament (recursos, páginas y widgets) nunca interactúan directamente con el SDK de Firestore. Todas las operaciones pasan por `App\Services\Firestore\*`.
+3. **No Invasión de Clientes Móviles**:
+   - Este proyecto se limita estrictamente a la gestión backoffice y respeta en todo momento los esquemas y contratos de datos utilizados por la app Android.
+
+---
+
+## 📋 Requisitos del Sistema
+
+- **PHP**: `^8.3`
+- **Extensiones PHP**: `curl`, `mbstring`, `openssl`, `pdo`, `tokenizer`, `xml`, `bcmath` (opcionalmente `grpc` para optimizar conexiones con Firestore).
+- **Composer**: `2.x`
+- **Node.js**: `>= 18.x` y **NPM**
+- **Base de Datos Local**: SQLite (por defecto), MySQL o PostgreSQL
+- **Cuenta de Servicio de Firebase / Google Cloud**: Archivo JSON de credenciales con acceso al proyecto de Firestore de ScoreBox.
+
+---
+
+## 🛠️ Instalación y Puesta en Marcha
+
+### 1. Clonar el Repositorio
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone https://github.com/pableras172/admin-scorebox.git
+cd admin-scorebox
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### 2. Instalar Dependencias de Backend
 
-## Contributing
+```bash
+composer install
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 3. Configurar el Entorno
 
-## Code of Conduct
+Copia el archivo de ejemplo y genera la clave de aplicación:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-## Security Vulnerabilities
+### 4. Configurar Credenciales de Firebase / Firestore
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Añade las credenciales de tu proyecto en el archivo `.env`:
 
-## License
+```dotenv
+FIREBASE_PROJECT_ID=tu-firebase-project-id
+FIREBASE_CREDENTIALS=storage/app/firebase/service-account.json
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+> ⚠️ **Importante**: Asegúrate de que el archivo JSON de credenciales nunca se incluya en el control de versiones (Git).
+
+### 5. Ejecutar Migraciones y Crear Usuario Administrador
+
+```bash
+# Crear base de datos local y tablas necesarias
+php artisan migrate
+
+# Crear usuario para acceder al panel de Filament
+php artisan make:filament-user
+```
+
+### 6. Instalar Dependencias de Frontend y Compilar Assets
+
+```bash
+npm install
+npm run build
+```
+
+### 7. Iniciar el Servidor de Desarrollo
+
+Puedes iniciar el entorno completo de desarrollo con:
+
+```bash
+composer run dev
+```
+
+O bien mediante los procesos individuales:
+
+```bash
+# Terminal 1: Servidor web PHP
+php artisan serve
+
+# Terminal 2: Servidor de assets Vite
+npm run dev
+```
+
+Accede al panel administrativo navegando a: [http://localhost:8000/admin](http://localhost:8000/admin)
+
+---
+
+## 🧪 Pruebas y Calidad de Código
+
+Ejecutar la suite de pruebas automatizadas:
+
+```bash
+php artisan test
+```
+
+Aplicar el formato de código estandarizado con Laravel Pint:
+
+```bash
+vendor/bin/pint --format agent
+```
+
+---
+
+## 📄 Licencia
+
+Este proyecto está bajo la licencia [MIT](LICENSE).
