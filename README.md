@@ -185,7 +185,8 @@ php artisan migrate --force
 # 4. Actualizar assets publicados de Filament
 php artisan filament:upgrade
 
-# 5. Compilar assets de frontend (si hubo cambios en estilos, iconos o vistas)
+# 5. (Opcional) Compilar assets de frontend si se modifican recursos personalizados
+# Nota: La raíz '/' redirige directamente a Filament (/admin), que ya incluye sus propios assets precompilados.
 npm run build
 
 # 6. Limpiar y re-generar cachés de configuración, rutas y vistas optimizadas
