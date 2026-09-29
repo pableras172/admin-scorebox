@@ -6,13 +6,34 @@ namespace Tests\Feature\Marketing;
 
 use App\Filament\Resources\MarketingCampaigns\Pages\CreateMarketingCampaign;
 use App\Models\MarketingCampaign;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 final class MarketingCampaignFormTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_rich_editor_attach_files_action(): void
+    {
+        $user = User::factory()->create();
+        $file = UploadedFile::fake()->image('test.jpg');
+
+        Livewire::actingAs($user)
+            ->test(CreateMarketingCampaign::class)
+            ->set('data.editor_mode', 'visual')
+            ->mountFormComponentAction('content_visual', 'attachFiles', arguments: [
+                'editorSelection' => ['type' => 'text', 'anchor' => 1, 'head' => 1],
+            ])
+            ->setFormComponentActionData([
+                'file' => $file,
+                'alt' => 'Foto clarinete',
+            ])
+            ->callMountedFormComponentAction()
+            ->assertHasNoFormComponentActionErrors();
+    }
 
     public function test_it_persists_campaign_with_promotional_code_type_and_exclusion_setting(): void
     {
@@ -163,7 +184,8 @@ final class MarketingCampaignFormTest extends TestCase
     {
         Livewire::test(CreateMarketingCampaign::class)
             ->assertFormFieldExists('editor_mode')
-            ->assertFormFieldExists('content')
+            ->assertFormFieldExists('content_code')
+            ->assertFormFieldExists('content_visual')
             ->fillForm([
                 'subject' => 'Oferta {{promotioncode}}',
                 'campaign_type' => MarketingCampaign::TYPE_PROMOTIONAL_CODE,

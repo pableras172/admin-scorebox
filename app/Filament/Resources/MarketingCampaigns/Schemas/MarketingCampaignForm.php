@@ -111,6 +111,7 @@ class MarketingCampaignForm
                             ->helperText('En modo "Código HTML" puedes pegar plantillas completas con botones, tablas y estilos inline. No cambies a "Editor Visual" si pegas una plantilla con estilos, ya que el editor visual simplifica el HTML.'),
 
                         RichEditor::make('content')
+                            ->key('content_visual')
                             ->label('Contenido del correo')
                             ->placeholder('Escribe aquí el contenido del mensaje...')
                             ->fileAttachmentsDisk('public')
@@ -168,6 +169,7 @@ class MarketingCampaignForm
                             }),
 
                         Textarea::make('content')
+                            ->key('content_code')
                             ->label('Contenido del correo (HTML directo)')
                             ->placeholder('<p>Pega o escribe aquí el código HTML del correo...</p>')
                             ->required()
