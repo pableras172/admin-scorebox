@@ -3,8 +3,15 @@
 namespace App\Filament\Resources\ScoreBoxUsers\Tables;
 
 use App\Filament\Resources\ScoreBoxUsers\ScoreBoxUserResource;
+use App\Mail\UserSupportMailable;
 use App\Models\FirestoreUser;
+use App\Models\PromotionalCode;
 use App\Services\Firestore\FirestoreUserGateway;
+use Filament\Actions\Action;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -12,6 +19,7 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Mail;
 
 class ScoreBoxUsersTable
 {
@@ -133,7 +141,7 @@ class ScoreBoxUsersTable
             $users = collect($result->data() ?? [])
                 ->map(function (array $user, int|string $index): FirestoreUser {
                     $primaryKey = (string) ($user['uid'] ?? $index);
-                    $model = new FirestoreUser();
+                    $model = new FirestoreUser;
                     $model->forceFill([
                         'id' => $primaryKey,
                         'uid' => $primaryKey,
@@ -220,12 +228,27 @@ class ScoreBoxUsersTable
                 IconColumn::make('notificationsEnabled')
                     ->label('Notificaciones')
                     ->boolean(),
+                TextColumn::make('promo_code')
+                    ->label('Código Promo')
+                    ->getStateUsing(function (FirestoreUser $record): ?string {
+                        if (blank($record->email)) {
+                            return null;
+                        }
+
+                        return PromotionalCode::where('assigned_email', strtolower($record->email))->value('code');
+                    })
+                    ->badge()
+                    ->color('success')
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('birthDate')
-                    ->label('Nacimiento'),
+                    ->label('Nacimiento')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('createdAt')
                     ->label('Creado'),
                 TextColumn::make('updatedAt')
-                    ->label('Actualizado'),
+                    ->label('Actualizado')
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('country')
@@ -249,6 +272,127 @@ class ScoreBoxUsersTable
                     ->placeholder('Todos')
                     ->trueLabel('Sí')
                     ->falseLabel('No'),
+            ])
+            ->actions([
+                Action::make('promoCode')
+                    ->label('Código Promo')
+                    ->icon('heroicon-o-ticket')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading(function (FirestoreUser $record): string {
+                        $promo = filled($record->email) ? PromotionalCode::where('assigned_email', strtolower($record->email))->first() : null;
+
+                        return $promo ? 'Reenviar Código Promocional' : 'Asignar Código Promocional';
+                    })
+                    ->modalDescription(function (FirestoreUser $record): string {
+                        if (blank($record->email)) {
+                            return 'El usuario no tiene dirección de correo electrónico registrada.';
+                        }
+
+                        $promo = PromotionalCode::where('assigned_email', strtolower($record->email))->first();
+                        if ($promo) {
+                            $assignedDate = $promo->assigned_at ? $promo->assigned_at->format('d/m/Y H:i') : 'desconocida';
+
+                            return "El usuario {$record->email} ya tiene asignado el código: {$promo->code} (asignado el {$assignedDate}). ¿Deseas reenviárselo por correo?";
+                        }
+
+                        $availableCount = PromotionalCode::available()->count();
+                        if ($availableCount === 0) {
+                            return "El usuario {$record->email} no tiene ningún código asignado, pero NO hay códigos disponibles en el inventario.";
+                        }
+
+                        return "El usuario {$record->email} no tiene ningún código asignado. Hay {$availableCount} códigos disponibles en stock. ¿Deseas asignarle uno y enviárselo por correo ahora?";
+                    })
+                    ->modalSubmitActionLabel(function (FirestoreUser $record): string {
+                        $promo = filled($record->email) ? PromotionalCode::where('assigned_email', strtolower($record->email))->first() : null;
+
+                        return $promo ? 'Sí, Reenviar Código' : 'Sí, Asignar y Enviar Código';
+                    })
+                    ->action(function (FirestoreUser $record): void {
+                        if (blank($record->email)) {
+                            Notification::make()
+                                ->title('Usuario sin email')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
+                        $promo = PromotionalCode::where('assigned_email', strtolower($record->email))->first();
+
+                        if (! $promo) {
+                            $promo = PromotionalCode::available()->first();
+
+                            if (! $promo) {
+                                Notification::make()
+                                    ->title('Inventario agotado')
+                                    ->body('No hay códigos promocionales disponibles para asignar.')
+                                    ->danger()
+                                    ->send();
+
+                                return;
+                            }
+
+                            $promo->update([
+                                'assigned_email' => strtolower($record->email),
+                                'assigned_at' => now(),
+                            ]);
+                        }
+
+                        Mail::to($record->email)->send(new UserSupportMailable(
+                            supportSubject: 'Tu código promocional de ScoreBox',
+                            supportMessage: 'Aquí tienes tu código promocional para disfrutar de la suscripción PRO en ScoreBox.',
+                            userName: $record->displayName ?: 'músico',
+                            promoCode: $promo->code,
+                        ));
+
+                        Notification::make()
+                            ->title('Código enviado correctamente')
+                            ->body("Se ha enviado el código {$promo->code} a {$record->email}.")
+                            ->success()
+                            ->send();
+                    }),
+
+                Action::make('sendDirectEmail')
+                    ->label('Enviar Email')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->color('primary')
+                    ->form([
+                        TextInput::make('subject')
+                            ->label('Asunto')
+                            ->default('Información sobre tu cuenta en ScoreBox')
+                            ->required(),
+                        Textarea::make('message')
+                            ->label('Mensaje')
+                            ->placeholder('Escribe tu mensaje para el usuario...')
+                            ->rows(6)
+                            ->required(),
+                    ])
+                    ->action(function (FirestoreUser $record, array $data): void {
+                        if (blank($record->email)) {
+                            Notification::make()
+                                ->title('Usuario sin email')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
+                        Mail::to($record->email)->send(new UserSupportMailable(
+                            supportSubject: (string) $data['subject'],
+                            supportMessage: (string) $data['message'],
+                            userName: $record->displayName ?: null,
+                        ));
+
+                        Notification::make()
+                            ->title('Email enviado')
+                            ->body("Mensaje enviado con éxito a {$record->email}.")
+                            ->success()
+                            ->send();
+                    }),
+
+                ViewAction::make()
+                    ->url(fn (FirestoreUser $record): string => ScoreBoxUserResource::getUrl('view', ['record' => $record->uid])),
             ])
             ->emptyStateHeading('No hay usuarios en Firestore')
             ->emptyStateDescription('La colección de usuarios de la aplicación móvil aún no tiene documentos o la conexión falla.')

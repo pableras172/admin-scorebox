@@ -52,6 +52,7 @@ class SendMarketingCampaignJob implements ShouldQueue
         // Prevent duplicate execution if already sending or sent
         if (! in_array($campaign->status, [
             MarketingCampaign::STATUS_DRAFT,
+            MarketingCampaign::STATUS_SCHEDULED,
             MarketingCampaign::STATUS_QUEUED,
             MarketingCampaign::STATUS_FAILED,
             MarketingCampaign::STATUS_TEST_SENT,
@@ -69,7 +70,9 @@ class SendMarketingCampaignJob implements ShouldQueue
         ]);
 
         try {
-            $recipients = $resolver->resolve($campaign->target_segment, (bool) $campaign->is_test);
+            $recipients = $campaign->target_instrument !== null
+                ? $resolver->resolve($campaign->target_segment, (bool) $campaign->is_test, $campaign->target_instrument)
+                : $resolver->resolve($campaign->target_segment, (bool) $campaign->is_test);
 
             // Filter recipients and validate stock for promotional code campaigns in production
             if ($campaign->isPromotionalCode() && ! $campaign->is_test) {
@@ -130,7 +133,7 @@ class SendMarketingCampaignJob implements ShouldQueue
 
                     if ($campaign->isPromotionalCode()) {
                         if ($campaign->is_test) {
-                            $promoCode = 'PROMO-TEST-' . strtoupper(Str::random(8));
+                            $promoCode = 'PROMO-TEST-'.strtoupper(Str::random(8));
                         } else {
                             $existingPromoCode = PromotionalCode::where('assigned_email', $recipient->email)->first();
 

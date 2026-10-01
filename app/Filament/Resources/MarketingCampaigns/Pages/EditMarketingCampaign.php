@@ -21,9 +21,9 @@ class EditMarketingCampaign extends EditRecord
             DeleteAction::make()
                 ->visible(fn (MarketingCampaign $record): bool => in_array($record->status, [
                     MarketingCampaign::STATUS_DRAFT,
+                    MarketingCampaign::STATUS_SCHEDULED,
                     MarketingCampaign::STATUS_TEST_SENT,
                 ], true)),
         ];
     }
 }
-

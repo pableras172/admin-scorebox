@@ -1,8 +1,11 @@
 <?php
 
+use App\Jobs\SendMarketingCampaignJob;
+use App\Models\MarketingCampaign;
 use App\Models\User;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -46,3 +49,28 @@ Artisan::command('user:password {email? : El email del usuario} {password? : La 
 
     return 0;
 })->purpose('Actualiza la contraseña de un usuario');
+
+Artisan::command('marketing:send-scheduled', function () {
+    $now = now();
+    $campaigns = MarketingCampaign::where('status', MarketingCampaign::STATUS_SCHEDULED)
+        ->where('scheduled_at', '<=', $now)
+        ->get();
+
+    if ($campaigns->isEmpty()) {
+        $this->info('No hay campañas programadas pendientes de envío.');
+
+        return 0;
+    }
+
+    foreach ($campaigns as $campaign) {
+        $this->info("Despachando campaña programada ID [{$campaign->id}] - Asunto: {$campaign->subject}");
+        $campaign->update(['status' => MarketingCampaign::STATUS_QUEUED]);
+        SendMarketingCampaignJob::dispatch($campaign->id);
+    }
+
+    $this->info("Se han despachado {$campaigns->count()} campañas programadas.");
+
+    return 0;
+})->purpose('Despacha las campañas de marketing programadas');
+
+Schedule::command('marketing:send-scheduled')->everyMinute();

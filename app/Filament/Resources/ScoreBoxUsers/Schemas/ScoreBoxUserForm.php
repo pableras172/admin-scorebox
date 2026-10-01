@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ScoreBoxUsers\Schemas;
 
+use App\Models\PromotionalCode;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
@@ -54,6 +55,23 @@ class ScoreBoxUserForm
                             ->disabled(),
                         Checkbox::make('notificationsEnabled')
                             ->label('Notificaciones')
+                            ->disabled(),
+                    ]),
+                Section::make('Soporte y Código Promocional')
+                    ->schema([
+                        TextInput::make('assigned_promo_code')
+                            ->label('Código Promocional asignado')
+                            ->formatStateUsing(function (?FirestoreUser $record): string {
+                                if (! $record || blank($record->email)) {
+                                    return 'Sin email registrado';
+                                }
+
+                                $promo = PromotionalCode::where('assigned_email', strtolower($record->email))->first();
+
+                                return $promo
+                                    ? "{$promo->code} (Asignado el ".($promo->assigned_at ? $promo->assigned_at->format('d/m/Y H:i') : 'fecha desconocida').')'
+                                    : 'Ningún código asignado';
+                            })
                             ->disabled(),
                     ]),
                 Section::make('Auditoría')

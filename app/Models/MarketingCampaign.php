@@ -33,6 +33,8 @@ final class MarketingCampaign extends Model
 
     public const STATUS_TEST_SENT = 'test_sent';
 
+    public const STATUS_SCHEDULED = 'scheduled';
+
     public const STATUS_FAILED = 'failed';
 
     public const TYPE_STANDARD = 'standard';
@@ -52,6 +54,7 @@ final class MarketingCampaign extends Model
         'subject',
         'content',
         'target_segment',
+        'target_instrument',
         'campaign_type',
         'exclude_previous_promo_recipients',
         'is_test',
@@ -59,6 +62,7 @@ final class MarketingCampaign extends Model
         'recipients_count',
         'sent_count',
         'failed_count',
+        'scheduled_at',
         'sent_at',
     ];
 
@@ -87,8 +91,38 @@ final class MarketingCampaign extends Model
             'recipients_count' => 'integer',
             'sent_count' => 'integer',
             'failed_count' => 'integer',
+            'scheduled_at' => 'datetime',
             'sent_at' => 'datetime',
         ];
+    }
+
+    public function isScheduled(): bool
+    {
+        return $this->status === self::STATUS_SCHEDULED;
+    }
+
+    protected static function booted(): void
+    {
+        self::saving(function (MarketingCampaign $campaign): void {
+            if ($campaign->scheduled_at !== null && $campaign->scheduled_at->isFuture()) {
+                if (in_array($campaign->status, [self::STATUS_DRAFT, self::STATUS_SCHEDULED], true)) {
+                    $campaign->status = self::STATUS_SCHEDULED;
+                }
+            } elseif ($campaign->status === self::STATUS_SCHEDULED && $campaign->scheduled_at === null) {
+                $campaign->status = self::STATUS_DRAFT;
+            }
+        });
+    }
+
+    /**
+     * Scope for scheduled campaigns.
+     *
+     * @param  Builder<MarketingCampaign>  $query
+     * @return Builder<MarketingCampaign>
+     */
+    public function scopeScheduled(Builder $query): Builder
+    {
+        return $query->where('status', self::STATUS_SCHEDULED);
     }
 
     /**

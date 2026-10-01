@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\MarketingCampaigns\Schemas;
 
+use App\Models\EmailTemplate;
 use App\Models\MarketingCampaign;
 use App\Models\PromotionalCode;
 use Closure;
@@ -16,6 +17,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 
 class MarketingCampaignForm
@@ -33,6 +35,28 @@ class MarketingCampaignForm
                 Section::make('Detalles de la Campaña')
                     ->description('Configura el asunto, el tipo de envío y el mensaje.')
                     ->schema([
+                        Select::make('template_id')
+                            ->label('Cargar desde plantilla')
+                            ->placeholder('Selecciona una plantilla predefinida...')
+                            ->options(fn (): array => EmailTemplate::query()->orderBy('name')->pluck('name', 'id')->all())
+                            ->live()
+                            ->dehydrated(false)
+                            ->afterStateUpdated(function (mixed $state, Set $set): void {
+                                if (! $state) {
+                                    return;
+                                }
+
+                                $template = EmailTemplate::find($state);
+                                if ($template) {
+                                    $set('subject', $template->subject);
+                                    $set('content', $template->content);
+                                    if ($template->editor_mode) {
+                                        $set('editor_mode', $template->editor_mode);
+                                    }
+                                }
+                            })
+                            ->helperText('Puedes seleccionar una plantilla guardada para rellenar automáticamente el asunto y el contenido.'),
+
                         TextInput::make('subject')
                             ->label('Asunto del correo')
                             ->placeholder('Ej: ¡Consigue tu versión PRO sin anuncios, {{name}}!')
@@ -88,6 +112,36 @@ class MarketingCampaignForm
                                 ? 'Desactiva la casilla "Correo de pruebas" superior para seleccionar una audiencia real.'
                                 : 'Los usuarios en la lista de bajas serán excluidos automáticamente.'
                             ),
+
+                        Select::make('target_instrument')
+                            ->label('Segmentación por Instrumento (Opcional)')
+                            ->placeholder('Todos los instrumentos')
+                            ->options([
+                                'Guitarra' => 'Guitarra',
+                                'Piano' => 'Piano',
+                                'Clarinete' => 'Clarinete',
+                                'Saxofón' => 'Saxofón',
+                                'Flauta' => 'Flauta',
+                                'Violín' => 'Violín',
+                                'Trompeta' => 'Trompeta',
+                                'Batería' => 'Batería',
+                                'Bajo' => 'Bajo',
+                                'Voz' => 'Voz',
+                                'Otro' => 'Otro',
+                            ])
+                            ->nullable()
+                            ->native(false)
+                            ->disabled(fn (Get $get): bool => (bool) $get('is_test'))
+                            ->dehydrated()
+                            ->helperText('Filtra según el instrumento principal del músico en ScoreBox (Firestore). Déjalo vacío para no filtrar por instrumento.'),
+
+                        DateTimePicker::make('scheduled_at')
+                            ->label('Programar Envío Automático')
+                            ->placeholder('Envío manual (inmediato al pulsar enviar)')
+                            ->seconds(false)
+                            ->native(false)
+                            ->minDate(now())
+                            ->helperText('Si indicas una fecha y hora futura, la campaña quedará guardada como "Programada" y el sistema la enviará automáticamente en ese momento.'),
 
                         ToggleButtons::make('editor_mode')
                             ->label('Modo del editor')

@@ -21,7 +21,7 @@ class CampaignAudienceResolver
      *
      * @return Collection<int, CampaignRecipient>
      */
-    public function resolve(string $segment = MarketingCampaign::SEGMENT_ALL, bool $isTest = false): Collection
+    public function resolve(string $segment = MarketingCampaign::SEGMENT_ALL, bool $isTest = false, ?string $targetInstrument = null): Collection
     {
         if ($isTest) {
             $testEmails = (array) config('app.test_emails', [
@@ -94,6 +94,13 @@ class CampaignAudienceResolver
                 continue;
             }
 
+            if (filled($targetInstrument)) {
+                $userInstrument = strtolower(trim((string) ($user['mainInstrument'] ?? '')));
+                if ($userInstrument !== strtolower(trim($targetInstrument))) {
+                    continue;
+                }
+            }
+
             $displayName = trim((string) ($user['displayName'] ?? ''));
             $name = $displayName !== '' ? $displayName : 'músico';
 
@@ -116,8 +123,8 @@ class CampaignAudienceResolver
     /**
      * Count recipients for a given segment or test mode.
      */
-    public function count(string $segment = MarketingCampaign::SEGMENT_ALL, bool $isTest = false): int
+    public function count(string $segment = MarketingCampaign::SEGMENT_ALL, bool $isTest = false, ?string $targetInstrument = null): int
     {
-        return $this->resolve($segment, $isTest)->count();
+        return $this->resolve($segment, $isTest, $targetInstrument)->count();
     }
 }

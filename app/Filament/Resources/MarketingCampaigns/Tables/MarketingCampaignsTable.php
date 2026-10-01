@@ -27,7 +27,9 @@ class MarketingCampaignsTable
     public static function calculatePromoStockStats(MarketingCampaign $campaign): array
     {
         $resolver = app(CampaignAudienceResolver::class);
-        $recipients = $resolver->resolve($campaign->target_segment, (bool) $campaign->is_test);
+        $recipients = $campaign->target_instrument !== null
+            ? $resolver->resolve($campaign->target_segment, (bool) $campaign->is_test, $campaign->target_instrument)
+            : $resolver->resolve($campaign->target_segment, (bool) $campaign->is_test);
 
         if ($campaign->is_test) {
             return [
@@ -119,11 +121,18 @@ class MarketingCampaignsTable
                         default => 'gray',
                     }),
 
+                TextColumn::make('target_instrument')
+                    ->label('Instrumento')
+                    ->badge()
+                    ->placeholder('Todos')
+                    ->color('gray'),
+
                 TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         MarketingCampaign::STATUS_DRAFT => 'Borrador',
+                        MarketingCampaign::STATUS_SCHEDULED => 'Programada',
                         MarketingCampaign::STATUS_QUEUED => 'En cola',
                         MarketingCampaign::STATUS_SENDING => 'Enviando',
                         MarketingCampaign::STATUS_TEST_SENT => 'Prueba enviada',
@@ -133,6 +142,7 @@ class MarketingCampaignsTable
                     })
                     ->color(fn (string $state): string => match ($state) {
                         MarketingCampaign::STATUS_DRAFT => 'gray',
+                        MarketingCampaign::STATUS_SCHEDULED => 'primary',
                         MarketingCampaign::STATUS_QUEUED => 'warning',
                         MarketingCampaign::STATUS_SENDING => 'info',
                         MarketingCampaign::STATUS_TEST_SENT => 'info',
@@ -155,6 +165,12 @@ class MarketingCampaignsTable
                     ->label('Fallidos')
                     ->numeric()
                     ->alignCenter(),
+
+                TextColumn::make('scheduled_at')
+                    ->label('Programada')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->placeholder('-'),
 
                 TextColumn::make('sent_at')
                     ->label('Fecha de envío')
@@ -190,10 +206,27 @@ class MarketingCampaignsTable
                         MarketingCampaign::SEGMENT_PREMIUM => 'Premium',
                     ]),
 
+                SelectFilter::make('target_instrument')
+                    ->label('Instrumento')
+                    ->options([
+                        'Guitarra' => 'Guitarra',
+                        'Piano' => 'Piano',
+                        'Clarinete' => 'Clarinete',
+                        'Saxofón' => 'Saxofón',
+                        'Flauta' => 'Flauta',
+                        'Violín' => 'Violín',
+                        'Trompeta' => 'Trompeta',
+                        'Batería' => 'Batería',
+                        'Bajo' => 'Bajo',
+                        'Voz' => 'Voz',
+                        'Otro' => 'Otro',
+                    ]),
+
                 SelectFilter::make('status')
                     ->label('Estado')
                     ->options([
                         MarketingCampaign::STATUS_DRAFT => 'Borrador',
+                        MarketingCampaign::STATUS_SCHEDULED => 'Programada',
                         MarketingCampaign::STATUS_QUEUED => 'En cola',
                         MarketingCampaign::STATUS_SENDING => 'Enviando',
                         MarketingCampaign::STATUS_TEST_SENT => 'Prueba enviada',
@@ -210,7 +243,9 @@ class MarketingCampaignsTable
                     ->modalHeading(fn (MarketingCampaign $record): string => $record->is_test ? 'Confirmar Envío de Prueba' : 'Confirmar Envío de Campaña')
                     ->modalDescription(function (MarketingCampaign $record): string {
                         $resolver = app(CampaignAudienceResolver::class);
-                        $count = $resolver->count($record->target_segment, (bool) $record->is_test);
+                        $count = $record->target_instrument !== null
+                            ? $resolver->count($record->target_segment, (bool) $record->is_test, $record->target_instrument)
+                            : $resolver->count($record->target_segment, (bool) $record->is_test);
 
                         if ($record->is_test) {
                             $testEmails = implode(', ', (array) config('app.test_emails', [
@@ -230,17 +265,17 @@ class MarketingCampaignsTable
 
                             if ($stats['deficit'] > 0) {
                                 return "⚠️ ATENCIÓN: No hay suficientes códigos promocionales disponibles para realizar este envío.\n\n"
-                                    . "• Destinatarios netos a contactar: {$stats['total_recipients']}\n"
-                                    . "• Códigos nuevos requeridos: {$stats['needed_fresh']}\n"
-                                    . "• Códigos libres disponibles en stock: {$stats['available_codes']}\n"
-                                    . "• DÉFICIT: Faltan {$stats['deficit']} códigos promocionales.\n\n"
-                                    . "El botón de envío está deshabilitado. Por favor, importa más códigos antes de enviar.";
+                                    ."• Destinatarios netos a contactar: {$stats['total_recipients']}\n"
+                                    ."• Códigos nuevos requeridos: {$stats['needed_fresh']}\n"
+                                    ."• Códigos libres disponibles en stock: {$stats['available_codes']}\n"
+                                    ."• DÉFICIT: Faltan {$stats['deficit']} códigos promocionales.\n\n"
+                                    .'El botón de envío está deshabilitado. Por favor, importa más códigos antes de enviar.';
                             }
 
                             return "Esta campaña de códigos promocionales despachará el correo a {$stats['total_recipients']} destinatarios netos.\n\n"
-                                . "• Códigos nuevos requeridos: {$stats['needed_fresh']}\n"
-                                . "• Códigos libres disponibles en stock: {$stats['available_codes']}\n\n"
-                                . "¿Deseas poner en cola el envío ahora?";
+                                ."• Códigos nuevos requeridos: {$stats['needed_fresh']}\n"
+                                ."• Códigos libres disponibles en stock: {$stats['available_codes']}\n\n"
+                                .'¿Deseas poner en cola el envío ahora?';
                         }
 
                         $segmentLabel = match ($record->target_segment) {
@@ -274,6 +309,7 @@ class MarketingCampaignsTable
                     ->modalCancelActionLabel('Cancelar')
                     ->visible(fn (MarketingCampaign $record): bool => in_array($record->status, [
                         MarketingCampaign::STATUS_DRAFT,
+                        MarketingCampaign::STATUS_SCHEDULED,
                         MarketingCampaign::STATUS_FAILED,
                         MarketingCampaign::STATUS_TEST_SENT,
                     ], true))
@@ -331,6 +367,7 @@ class MarketingCampaignsTable
                     ])
                     ->visible(fn (MarketingCampaign $record): bool => $record->is_test && in_array($record->status, [
                         MarketingCampaign::STATUS_DRAFT,
+                        MarketingCampaign::STATUS_SCHEDULED,
                         MarketingCampaign::STATUS_TEST_SENT,
                         MarketingCampaign::STATUS_FAILED,
                     ], true))
@@ -348,11 +385,13 @@ class MarketingCampaignsTable
                 EditAction::make()
                     ->visible(fn (MarketingCampaign $record): bool => in_array($record->status, [
                         MarketingCampaign::STATUS_DRAFT,
+                        MarketingCampaign::STATUS_SCHEDULED,
                         MarketingCampaign::STATUS_TEST_SENT,
                     ], true)),
                 DeleteAction::make()
                     ->visible(fn (MarketingCampaign $record): bool => in_array($record->status, [
                         MarketingCampaign::STATUS_DRAFT,
+                        MarketingCampaign::STATUS_SCHEDULED,
                         MarketingCampaign::STATUS_TEST_SENT,
                     ], true)),
             ])
