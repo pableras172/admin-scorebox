@@ -9,7 +9,6 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
-use Filament\Support\Colors\Color;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -24,8 +23,10 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('admin')
-            ->path('admin')            
+            ->path('admin')
             ->login()
+            ->passwordReset()
+            ->profile()
             ->brandName('ScoreBox')
             ->brandLogo(fn () => view('filament.admin.logo'))
             ->brandLogoHeight('2.2rem')
