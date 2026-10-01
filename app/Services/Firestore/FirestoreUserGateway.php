@@ -27,7 +27,7 @@ class FirestoreUserGateway
 
     public function getById(string $uid, bool $fresh = false): FirestoreResult
     {
-        $cacheKey = 'firestore:users:doc:' . $uid;
+        $cacheKey = 'firestore:users:doc:'.$uid;
 
         if (! $fresh && Cache::has($cacheKey)) {
             $cached = Cache::get($cacheKey);
@@ -210,7 +210,7 @@ class FirestoreUserGateway
             ]);
         }
 
-        $cacheKey = 'firestore:users:list:' . md5(json_encode($filters) . ':' . $limit);
+        $cacheKey = 'firestore:users:list:'.md5(json_encode($filters).':'.$limit);
 
         if (! $fresh && Cache::has($cacheKey)) {
             $cached = Cache::get($cacheKey);
@@ -319,7 +319,7 @@ class FirestoreUserGateway
     }
 
     /**
-     * @param array<string, mixed> $changes
+     * @param  array<string, mixed>  $changes
      */
     public function update(string $uid, array $changes): FirestoreResult
     {

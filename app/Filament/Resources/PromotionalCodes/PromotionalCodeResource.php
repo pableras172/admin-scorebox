@@ -59,4 +59,3 @@ class PromotionalCodeResource extends Resource
         ];
     }
 }
-

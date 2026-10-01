@@ -23,8 +23,8 @@ class UsersPremiumVsFree extends ChartWidget
 
             return [
                 'labels' => [
-                    'Premium (' . $premiumPercent . '%)',
-                    'No premium (' . $freePercent . '%)',
+                    'Premium ('.$premiumPercent.'%)',
+                    'No premium ('.$freePercent.'%)',
                 ],
                 'datasets' => [[
                     'label' => 'Usuarios',

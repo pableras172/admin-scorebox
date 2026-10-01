@@ -22,7 +22,7 @@ class ListScoreBoxUsers extends ListRecords
         $this->tableRecordsPerPage = 10;
     }
 
-    public function setPage(int | string $page, ?string $pageName = null): void
+    public function setPage(int|string $page, ?string $pageName = null): void
     {
         parent::setPage($page, $pageName);
 

@@ -59,4 +59,3 @@ class EmailUnsubscribeResource extends Resource
         ];
     }
 }
-

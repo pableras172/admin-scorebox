@@ -24,4 +24,3 @@ class ViewMarketingCampaign extends ViewRecord
         ];
     }
 }
-

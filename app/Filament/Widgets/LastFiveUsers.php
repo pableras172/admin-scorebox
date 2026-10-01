@@ -26,7 +26,7 @@ class LastFiveUsers extends TableWidget
             $items = collect($result->data() ?? [])
                 ->take(5)
                 ->map(function (array $user): FirestoreUser {
-                    $model = new FirestoreUser();
+                    $model = new FirestoreUser;
                     $model->forceFill([
                         'uid' => $user['uid'] ?? null,
                         'email' => $user['email'] ?? null,

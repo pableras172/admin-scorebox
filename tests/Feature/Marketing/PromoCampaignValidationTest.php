@@ -153,4 +153,3 @@ final class PromoCampaignValidationTest extends TestCase
         $this->assertSame(MarketingCampaign::STATUS_FAILED, $campaign->status);
     }
 }
-

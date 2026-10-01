@@ -16,4 +16,3 @@ class ListEmailUnsubscribes extends ListRecords
         return 'Bajas de Marketing';
     }
 }
-

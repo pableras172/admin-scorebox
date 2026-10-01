@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Firestore;
 
 use App\Services\Firestore\FirestoreUserValidator;
+use Google\Cloud\Core\Timestamp;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -42,8 +43,8 @@ final class ScoreBoxUserValidatorTest extends TestCase
             'email' => 'player@example.com',
             'displayName' => 'Player One',
             'active' => true,
-            'createdAt' => new \Google\Cloud\Core\Timestamp(new \DateTimeImmutable('2026-08-30T10:00:00Z')),
-            'updatedAt' => new \Google\Cloud\Core\Timestamp(new \DateTimeImmutable('2026-08-30T10:15:00Z')),
+            'createdAt' => new Timestamp(new \DateTimeImmutable('2026-08-30T10:00:00Z')),
+            'updatedAt' => new Timestamp(new \DateTimeImmutable('2026-08-30T10:15:00Z')),
             'profile' => ['language' => 'es'],
         ];
 

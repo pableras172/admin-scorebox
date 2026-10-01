@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Firestore;
 
+use Google\Cloud\Core\Timestamp;
 use InvalidArgumentException;
 
 final class FirestoreUserValidator
 {
     /**
-     * @param array<string, mixed> $document
+     * @param  array<string, mixed>  $document
      * @return array<string, mixed>
      */
     public static function validate(array $document): array
@@ -129,7 +130,7 @@ final class FirestoreUserValidator
             return null;
         }
 
-        if ($value instanceof \Google\Cloud\Core\Timestamp) {
+        if ($value instanceof Timestamp) {
             $value = $value->formatAsString();
         }
 
@@ -137,7 +138,7 @@ final class FirestoreUserValidator
             $numericValue = (float) $value;
             $seconds = abs($numericValue) >= 1_000_000_000_000 ? $numericValue / 1000 : $numericValue;
 
-            $dateTime = new \DateTimeImmutable('@' . (string) $seconds);
+            $dateTime = new \DateTimeImmutable('@'.(string) $seconds);
             $formatted = $dateTime->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.u\Z');
 
             return preg_replace('/\.0+Z$/', 'Z', preg_replace('/(\.\d{3})\d+Z$/', '$1Z', $formatted));
@@ -163,7 +164,7 @@ final class FirestoreUserValidator
                     return null;
                 }
 
-                $dateTime = new \DateTimeImmutable('@' . (string) $parsed);
+                $dateTime = new \DateTimeImmutable('@'.(string) $parsed);
                 $formatted = $dateTime->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.u\Z');
 
                 return preg_replace('/\.0+Z$/', 'Z', preg_replace('/(\.\d{3})\d+Z$/', '$1Z', $formatted));

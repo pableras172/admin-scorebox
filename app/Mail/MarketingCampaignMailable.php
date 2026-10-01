@@ -32,7 +32,7 @@ class MarketingCampaignMailable extends Mailable
     {
         return new Headers(
             text: [
-                'List-Unsubscribe' => '<' . $this->unsubscribeUrl . '>',
+                'List-Unsubscribe' => '<'.$this->unsubscribeUrl.'>',
                 'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click',
             ],
         );
@@ -50,4 +50,3 @@ class MarketingCampaignMailable extends Mailable
         );
     }
 }
-

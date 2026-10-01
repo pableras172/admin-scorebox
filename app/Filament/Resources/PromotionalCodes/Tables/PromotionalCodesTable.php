@@ -171,4 +171,3 @@ class PromotionalCodesTable
             ->defaultSort('id', 'desc');
     }
 }
-

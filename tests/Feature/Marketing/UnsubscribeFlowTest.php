@@ -82,4 +82,3 @@ final class UnsubscribeFlowTest extends TestCase
         $this->assertFalse(EmailUnsubscribe::isUnsubscribed($email));
     }
 }
-

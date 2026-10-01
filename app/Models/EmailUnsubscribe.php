@@ -12,7 +12,9 @@ final class EmailUnsubscribe extends Model
     use HasFactory;
 
     public const SOURCE_LINK = 'link';
+
     public const SOURCE_MANUAL = 'manual';
+
     public const SOURCE_HEADER = 'header';
 
     /**
@@ -66,4 +68,3 @@ final class EmailUnsubscribe extends Model
         return (bool) self::where('email', strtolower(trim($email)))->delete();
     }
 }
-

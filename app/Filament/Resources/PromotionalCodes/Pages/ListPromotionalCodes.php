@@ -16,4 +16,3 @@ class ListPromotionalCodes extends ListRecords
         return [];
     }
 }
-

@@ -74,4 +74,3 @@ class UnsubscribeController extends Controller
         ]);
     }
 }
-

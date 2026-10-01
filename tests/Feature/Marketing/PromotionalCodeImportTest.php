@@ -21,7 +21,7 @@ final class PromotionalCodeImportTest extends TestCase
             'code' => 'EXISTINGCODE12345678901',
         ]);
 
-        $csvContent = <<<CSV
+        $csvContent = <<<'CSV'
 Promotion code
 EXISTINGCODE12345678901
 4DUJQ6ASZ392Z0EARXBLL64
@@ -31,7 +31,7 @@ HCMNAPQA2XW42ZQC44GWYZX
 
 CSV;
 
-        $tempPath = tempnam(sys_get_temp_dir(), 'promo_test_') . '.csv';
+        $tempPath = tempnam(sys_get_temp_dir(), 'promo_test_').'.csv';
         File::put($tempPath, $csvContent);
 
         try {
@@ -62,4 +62,3 @@ CSV;
         }
     }
 }
-

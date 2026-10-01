@@ -72,4 +72,3 @@ class MarketingCampaignResource extends Resource
         ];
     }
 }
-

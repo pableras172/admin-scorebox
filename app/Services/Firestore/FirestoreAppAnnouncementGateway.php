@@ -29,6 +29,8 @@ class FirestoreAppAnnouncementGateway
             'type' => 'info',
             'action_text' => '',
             'action_url' => '',
+            'image_url' => '',
+            'hide_for_pro' => false,
             'updated_at' => null,
         ];
 
@@ -42,13 +44,18 @@ class FirestoreAppAnnouncementGateway
             if ($snapshot !== null && method_exists($snapshot, 'data')) {
                 $data = $snapshot->data();
                 if (is_array($data)) {
+                    $type = (string) ($data['type'] ?? 'info');
+                    $hideForPro = (bool) ($data['hide_for_pro'] ?? $data['hideForPro'] ?? ($type === 'ad'));
+
                     return [
                         'enabled' => (bool) ($data['enabled'] ?? false),
                         'title' => (string) ($data['title'] ?? ''),
                         'message' => (string) ($data['message'] ?? ''),
-                        'type' => (string) ($data['type'] ?? 'info'),
+                        'type' => $type,
                         'action_text' => (string) ($data['action_text'] ?? $data['actionText'] ?? ''),
                         'action_url' => (string) ($data['action_url'] ?? $data['actionUrl'] ?? ''),
+                        'image_url' => (string) ($data['image_url'] ?? $data['imageUrl'] ?? ''),
+                        'hide_for_pro' => $hideForPro,
                         'updated_at' => (string) ($data['updated_at'] ?? ''),
                     ];
                 }
@@ -66,13 +73,18 @@ class FirestoreAppAnnouncementGateway
     public function save(array $data): FirestoreResult
     {
         try {
+            $type = (string) ($data['type'] ?? 'info');
+            $hideForPro = (bool) ($data['hide_for_pro'] ?? ($type === 'ad'));
+
             $payload = [
                 'enabled' => (bool) ($data['enabled'] ?? false),
                 'title' => (string) ($data['title'] ?? ''),
                 'message' => (string) ($data['message'] ?? ''),
-                'type' => (string) ($data['type'] ?? 'info'),
+                'type' => $type,
                 'action_text' => (string) ($data['action_text'] ?? ''),
                 'action_url' => (string) ($data['action_url'] ?? ''),
+                'image_url' => (string) ($data['image_url'] ?? ''),
+                'hide_for_pro' => $hideForPro,
                 'updated_at' => now()->toIso8601String(),
             ];
 

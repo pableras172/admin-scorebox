@@ -38,4 +38,3 @@ class EmailUnsubscribeFactory extends Factory
         ]);
     }
 }
-

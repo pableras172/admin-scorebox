@@ -79,4 +79,3 @@ final class PromotionalCodeModelTest extends TestCase
         $this->assertTrue($campaign->promotionalCodes->contains($code));
     }
 }
-

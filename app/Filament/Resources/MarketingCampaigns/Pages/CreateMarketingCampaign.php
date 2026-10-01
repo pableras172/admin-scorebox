@@ -11,4 +11,3 @@ class CreateMarketingCampaign extends CreateRecord
 {
     protected static string $resource = MarketingCampaignResource::class;
 }
-

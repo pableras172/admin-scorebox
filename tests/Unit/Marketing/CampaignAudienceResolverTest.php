@@ -134,4 +134,3 @@ final class CampaignAudienceResolverTest extends TestCase
         $this->assertSame('Tester', $testRecipients->first()->name);
     }
 }
-

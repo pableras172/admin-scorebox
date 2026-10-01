@@ -43,4 +43,3 @@ class PromotionalCodeFactory extends Factory
         ]);
     }
 }
-

@@ -21,7 +21,7 @@ class MarketingCampaignFactory extends Factory
     {
         return [
             'subject' => fake()->sentence(),
-            'content' => '<p>' . fake()->paragraph() . '</p>',
+            'content' => '<p>'.fake()->paragraph().'</p>',
             'target_segment' => MarketingCampaign::SEGMENT_ALL,
             'is_test' => false,
             'status' => MarketingCampaign::STATUS_DRAFT,
@@ -56,4 +56,3 @@ class MarketingCampaignFactory extends Factory
         ]);
     }
 }
-

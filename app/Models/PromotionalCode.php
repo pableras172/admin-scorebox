@@ -68,7 +68,7 @@ final class PromotionalCode extends Model
     /**
      * Scope for available (unassigned) codes.
      *
-     * @param Builder<PromotionalCode> $query
+     * @param  Builder<PromotionalCode>  $query
      * @return Builder<PromotionalCode>
      */
     public function scopeAvailable(Builder $query): Builder
@@ -79,7 +79,7 @@ final class PromotionalCode extends Model
     /**
      * Scope for assigned codes.
      *
-     * @param Builder<PromotionalCode> $query
+     * @param  Builder<PromotionalCode>  $query
      * @return Builder<PromotionalCode>
      */
     public function scopeAssigned(Builder $query): Builder
@@ -87,4 +87,3 @@ final class PromotionalCode extends Model
         return $query->whereNotNull('assigned_email');
     }
 }
-

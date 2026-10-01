@@ -8,6 +8,7 @@ use App\Services\Firestore\FirestoreClientFactory;
 use App\Services\Firestore\FirestoreResult;
 use App\Services\Firestore\FirestoreUserGateway;
 use Illuminate\Foundation\Testing\TestCase as LaravelTestCase;
+use Illuminate\Support\Facades\Cache;
 use Mockery;
 use PHPUnit\Framework\Attributes\CoversClass;
 
@@ -22,15 +23,8 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
 
     public function test_it_returns_a_validated_user_from_firestore(): void
     {
-        $document = new class([
-            'uid' => 'abc123',
-            'email' => 'player@example.com',
-            'displayName' => 'Player One',
-            'active' => true,
-            'createdAt' => '2026-08-30T10:00:00Z',
-            'updatedAt' => '2026-08-30T10:15:00Z',
-            'profile' => ['language' => 'es'],
-        ]) {
+        $document = new class(['uid' => 'abc123', 'email' => 'player@example.com', 'displayName' => 'Player One', 'active' => true, 'createdAt' => '2026-08-30T10:00:00Z', 'updatedAt' => '2026-08-30T10:15:00Z', 'profile' => ['language' => 'es']])
+        {
             public function __construct(private readonly array $data) {}
 
             public function data(): array
@@ -39,7 +33,8 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
             }
         };
 
-        $snapshot = new class($document) {
+        $snapshot = new class($document)
+        {
             public function __construct(private readonly object $document) {}
 
             public function data(): array
@@ -48,7 +43,8 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
             }
         };
 
-        $docReference = new class($snapshot) {
+        $docReference = new class($snapshot)
+        {
             public function __construct(private readonly object $snapshot) {}
 
             public function snapshot(): object
@@ -57,7 +53,8 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
             }
         };
 
-        $collection = new class($docReference) {
+        $collection = new class($docReference)
+        {
             public function __construct(private readonly object $reference) {}
 
             public function document(string $uid): object
@@ -66,7 +63,8 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
             }
         };
 
-        $client = new class($collection) {
+        $client = new class($collection)
+        {
             public function __construct(private readonly object $collection) {}
 
             public function collection(string $name): object
@@ -89,7 +87,8 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
 
     public function test_it_returns_a_controlled_error_for_invalid_document(): void
     {
-        $document = new class(['email' => 'missing-uid']) {
+        $document = new class(['email' => 'missing-uid'])
+        {
             public function __construct(private readonly array $data) {}
 
             public function data(): array
@@ -98,7 +97,8 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
             }
         };
 
-        $snapshot = new class($document) {
+        $snapshot = new class($document)
+        {
             public function __construct(private readonly object $document) {}
 
             public function data(): array
@@ -107,7 +107,8 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
             }
         };
 
-        $docReference = new class($snapshot) {
+        $docReference = new class($snapshot)
+        {
             public function __construct(private readonly object $snapshot) {}
 
             public function snapshot(): object
@@ -116,7 +117,8 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
             }
         };
 
-        $collection = new class($docReference) {
+        $collection = new class($docReference)
+        {
             public function __construct(private readonly object $reference) {}
 
             public function document(string $uid): object
@@ -125,7 +127,8 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
             }
         };
 
-        $client = new class($collection) {
+        $client = new class($collection)
+        {
             public function __construct(private readonly object $collection) {}
 
             public function collection(string $name): object
@@ -147,14 +150,8 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
 
     public function test_it_lists_users_with_a_safe_limit(): void
     {
-        $snapshot = new class([
-            'uid' => 'abc123',
-            'email' => 'player@example.com',
-            'displayName' => 'Player One',
-            'active' => true,
-            'createdAt' => '2026-08-30T10:00:00Z',
-            'updatedAt' => '2026-08-30T10:15:00Z',
-        ]) {
+        $snapshot = new class(['uid' => 'abc123', 'email' => 'player@example.com', 'displayName' => 'Player One', 'active' => true, 'createdAt' => '2026-08-30T10:00:00Z', 'updatedAt' => '2026-08-30T10:15:00Z'])
+        {
             public function __construct(private readonly array $data) {}
 
             public function data(): array
@@ -163,7 +160,8 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
             }
         };
 
-        $query = new class([$snapshot]) {
+        $query = new class([$snapshot])
+        {
             public function __construct(private readonly array $documents) {}
 
             public function where(string $field, string $operator, mixed $value): self
@@ -187,7 +185,8 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
             }
         };
 
-        $collection = new class($query) {
+        $collection = new class($query)
+        {
             public function __construct(private readonly object $query) {}
 
             public function where(string $field, string $operator, mixed $value): object
@@ -211,7 +210,8 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
             }
         };
 
-        $client = new class($collection) {
+        $client = new class($collection)
+        {
             public function __construct(private readonly object $collection) {}
 
             public function collection(string $name): object
@@ -233,9 +233,10 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
 
     public function test_it_counts_all_users_using_aggregation_and_caches_result(): void
     {
-        \Illuminate\Support\Facades\Cache::flush();
+        Cache::flush();
 
-        $collection = new class() {
+        $collection = new class
+        {
             public int $countCalls = 0;
 
             public function count(): int
@@ -246,7 +247,8 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
             }
         };
 
-        $client = new class($collection) {
+        $client = new class($collection)
+        {
             public function __construct(public object $collection) {}
 
             public function collection(string $name): object
@@ -273,16 +275,18 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
 
     public function test_it_counts_users_by_premium_status_using_aggregation(): void
     {
-        \Illuminate\Support\Facades\Cache::flush();
+        Cache::flush();
 
-        $query = new class() {
+        $query = new class
+        {
             public function count(): int
             {
                 return 15;
             }
         };
 
-        $collection = new class($query) {
+        $collection = new class($query)
+        {
             public function __construct(public object $query) {}
 
             public function where(string $field, string $operator, mixed $value): object
@@ -291,7 +295,8 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
             }
         };
 
-        $client = new class($collection) {
+        $client = new class($collection)
+        {
             public function __construct(public object $collection) {}
 
             public function collection(string $name): object
@@ -317,13 +322,16 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
 
     public function test_it_rejects_invalid_update_payloads(): void
     {
-        $client = new class() {
+        $client = new class
+        {
             public function collection(string $name): object
             {
-                return new class() {
+                return new class
+                {
                     public function document(string $uid): object
                     {
-                        return new class() {
+                        return new class
+                        {
                             public function set(array $data): void {}
                         };
                     }

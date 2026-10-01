@@ -7,6 +7,7 @@ namespace Tests\Feature\Marketing;
 use App\Jobs\SendMarketingCampaignJob;
 use App\Mail\MarketingCampaignMailable;
 use App\Models\MarketingCampaign;
+use App\Models\PromotionalCode;
 use App\Services\Marketing\CampaignAudienceResolver;
 use App\Services\Marketing\CampaignRecipient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -131,8 +132,8 @@ final class SendMarketingCampaignJobTest extends TestCase
     {
         Mail::fake();
 
-        \App\Models\PromotionalCode::factory()->create(['code' => 'PROMO-ALPHA']);
-        \App\Models\PromotionalCode::factory()->create(['code' => 'PROMO-BETA']);
+        PromotionalCode::factory()->create(['code' => 'PROMO-ALPHA']);
+        PromotionalCode::factory()->create(['code' => 'PROMO-BETA']);
 
         $campaign = MarketingCampaign::create([
             'subject' => 'Tu código PRO: {{promotioncode}}',
@@ -162,16 +163,16 @@ final class SendMarketingCampaignJobTest extends TestCase
         $this->assertSame(2, $campaign->sent_count);
         $this->assertSame(0, $campaign->failed_count);
 
-        $assignedCodes = \App\Models\PromotionalCode::query()->assigned()->get();
+        $assignedCodes = PromotionalCode::query()->assigned()->get();
         $this->assertCount(2, $assignedCodes);
 
-        $user1Code = \App\Models\PromotionalCode::where('assigned_email', 'user1@example.com')->first();
+        $user1Code = PromotionalCode::where('assigned_email', 'user1@example.com')->first();
         $this->assertNotNull($user1Code);
         $this->assertSame('uid-1', $user1Code->assigned_uid);
         $this->assertSame($campaign->id, $user1Code->marketing_campaign_id);
         $this->assertNotNull($user1Code->assigned_at);
 
-        $user2Code = \App\Models\PromotionalCode::where('assigned_email', 'user2@example.com')->first();
+        $user2Code = PromotionalCode::where('assigned_email', 'user2@example.com')->first();
         $this->assertNotNull($user2Code);
         $this->assertSame('uid-2', $user2Code->assigned_uid);
 
@@ -194,19 +195,19 @@ final class SendMarketingCampaignJobTest extends TestCase
     {
         Mail::fake();
 
-        $existing = \App\Models\PromotionalCode::factory()->assigned()->create([
+        $existing = PromotionalCode::factory()->assigned()->create([
             'code' => 'EXISTING-PROMO',
             'assigned_email' => 'repeat@example.com',
             'assigned_uid' => 'uid-repeat',
         ]);
 
-        $premiumAssigned = \App\Models\PromotionalCode::factory()->assigned()->create([
+        $premiumAssigned = PromotionalCode::factory()->assigned()->create([
             'code' => 'PREMIUM-PROMO',
             'assigned_email' => 'premium@example.com',
             'assigned_uid' => 'uid-prem',
         ]);
 
-        $fresh = \App\Models\PromotionalCode::factory()->create(['code' => 'FRESH-PROMO']);
+        $fresh = PromotionalCode::factory()->create(['code' => 'FRESH-PROMO']);
 
         $campaign = MarketingCampaign::create([
             'subject' => 'Regalo: {{promotioncode}}',
@@ -265,12 +266,12 @@ final class SendMarketingCampaignJobTest extends TestCase
     {
         Mail::fake();
 
-        \App\Models\PromotionalCode::factory()->assigned()->create([
+        PromotionalCode::factory()->assigned()->create([
             'code' => 'OLD-CODE',
             'assigned_email' => 'old@example.com',
         ]);
 
-        \App\Models\PromotionalCode::factory()->create(['code' => 'FRESH-CODE']);
+        PromotionalCode::factory()->create(['code' => 'FRESH-CODE']);
 
         $campaign = MarketingCampaign::create([
             'subject' => 'Código: {{promotioncode}}',
@@ -334,7 +335,7 @@ final class SendMarketingCampaignJobTest extends TestCase
         $this->assertSame(MarketingCampaign::STATUS_TEST_SENT, $campaign->status);
         $this->assertSame(1, $campaign->sent_count);
 
-        $this->assertSame(0, \App\Models\PromotionalCode::count());
+        $this->assertSame(0, PromotionalCode::count());
 
         Mail::assertSent(MarketingCampaignMailable::class, function (MarketingCampaignMailable $mail): bool {
             return $mail->hasTo('tester@example.com')
@@ -348,7 +349,7 @@ final class SendMarketingCampaignJobTest extends TestCase
         Mail::fake();
 
         // Stock has 1 code, but we need 2 fresh codes
-        \App\Models\PromotionalCode::factory()->create(['code' => 'ONLY-ONE']);
+        PromotionalCode::factory()->create(['code' => 'ONLY-ONE']);
 
         $campaign = MarketingCampaign::create([
             'subject' => 'Código: {{promotioncode}}',
@@ -376,7 +377,7 @@ final class SendMarketingCampaignJobTest extends TestCase
 
         $this->assertSame(MarketingCampaign::STATUS_FAILED, $campaign->status);
         Mail::assertNothingSent();
-        $this->assertSame(1, \App\Models\PromotionalCode::available()->count());
+        $this->assertSame(1, PromotionalCode::available()->count());
     }
 
     public function test_it_aborts_if_campaign_is_already_sent(): void

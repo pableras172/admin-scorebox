@@ -85,4 +85,80 @@ final class AppAnnouncementTest extends TestCase
         $this->assertEquals('https://example.com/scores', $loaded['action_url']);
         $this->assertNotEmpty($loaded['updated_at']);
     }
+
+    public function test_it_saves_and_retrieves_sponsored_ad_announcement_with_image_and_pro_exclusion(): void
+    {
+        $storage = [];
+
+        $docRef = new class($storage)
+        {
+            public function __construct(public array &$storage) {}
+
+            public function snapshot(): object
+            {
+                $data = $this->storage;
+
+                return new class($data)
+                {
+                    public function __construct(private readonly array $data) {}
+
+                    public function data(): array
+                    {
+                        return $this->data;
+                    }
+                };
+            }
+
+            public function set(array $data): void
+            {
+                $this->storage = $data;
+            }
+        };
+
+        $collection = new class($docRef)
+        {
+            public function __construct(private readonly object $docRef) {}
+
+            public function document(string $id): object
+            {
+                return $this->docRef;
+            }
+        };
+
+        $client = new class($collection)
+        {
+            public function __construct(private readonly object $collection) {}
+
+            public function collection(string $name): object
+            {
+                return $this->collection;
+            }
+        };
+
+        $mockFactory = Mockery::mock(FirestoreClientFactory::class);
+        $mockFactory->shouldReceive('make')->andReturn($client);
+
+        $gateway = new FirestoreAppAnnouncementGateway($mockFactory);
+
+        $saveResult = $gateway->save([
+            'enabled' => true,
+            'title' => 'Patrocinado: Accesorios Musicales Pro',
+            'message' => 'Descuento del 15% en atriles y pedales bluetooth.',
+            'type' => 'ad',
+            'image_url' => 'https://example.com/ad-banner.jpg',
+            'action_text' => 'Comprar con descuento',
+            'action_url' => 'https://store.example.com/discount',
+            'hide_for_pro' => true,
+        ]);
+
+        $this->assertTrue($saveResult->isSuccess());
+
+        $loaded = $gateway->get();
+        $this->assertTrue($loaded['enabled']);
+        $this->assertEquals('ad', $loaded['type']);
+        $this->assertTrue($loaded['hide_for_pro']);
+        $this->assertEquals('https://example.com/ad-banner.jpg', $loaded['image_url']);
+        $this->assertEquals('Comprar con descuento', $loaded['action_text']);
+        $this->assertEquals('https://store.example.com/discount', $loaded['action_url']);
+    }
 }

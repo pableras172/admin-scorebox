@@ -20,4 +20,3 @@ class ListMarketingCampaigns extends ListRecords
         ];
     }
 }
-

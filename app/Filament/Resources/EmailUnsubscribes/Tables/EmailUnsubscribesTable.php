@@ -102,4 +102,3 @@ class EmailUnsubscribesTable
             ->defaultSort('id', 'desc');
     }
 }
-
