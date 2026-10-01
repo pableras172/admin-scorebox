@@ -33,11 +33,9 @@ final class DashboardWidgetsTest extends TestCase
 
         PromotionalCode::create([
             'code' => 'PROMO-1',
-            'is_used' => false,
         ]);
         PromotionalCode::create([
             'code' => 'PROMO-2',
-            'is_used' => true,
             'assigned_email' => 'user@example.com',
             'assigned_at' => now(),
         ]);
@@ -53,10 +51,11 @@ final class DashboardWidgetsTest extends TestCase
         $widget = new UsesScoreBox;
         $stats = $widget->getStats();
 
-        $this->assertCount(3, $stats);
+        $this->assertCount(4, $stats);
         $this->assertEquals('150', $stats[0]->getValue());
         $this->assertEquals('1', $stats[1]->getValue());
         $this->assertEquals('1', $stats[2]->getValue());
+        $this->assertEquals('0', $stats[3]->getValue());
     }
 
     public function test_latest_campaigns_widget_renders_successfully(): void

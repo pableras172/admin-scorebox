@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Models\MarketingCampaign;
 use App\Models\PromotionalCode;
+use App\Models\Suggestion;
 use App\Services\Firestore\FirestoreUserGateway;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -91,6 +92,28 @@ class UsesScoreBox extends StatsOverviewWidget
             $stats[] = Stat::make('Campañas Enviadas', '-')
                 ->description('Sin datos')
                 ->icon('heroicon-o-envelope')
+                ->color('gray');
+        }
+
+        // 4. Buzón de Sugerencias
+        try {
+            $newSuggestions = Suggestion::where('status', Suggestion::STATUS_NEW)->count();
+            $inReviewSuggestions = Suggestion::where('status', Suggestion::STATUS_IN_REVIEW)->count();
+            $totalSuggestions = Suggestion::count();
+
+            $desc = $newSuggestions > 0
+                ? "{$newSuggestions} sin revisar · {$inReviewSuggestions} en revisión"
+                : "{$totalSuggestions} recibidas en total";
+
+            $stats[] = Stat::make('Buzón Sugerencias', number_format($newSuggestions, 0, ',', '.'))
+                ->description($desc)
+                ->descriptionIcon('heroicon-m-chat-bubble-left-right')
+                ->icon('heroicon-o-chat-bubble-left-right')
+                ->color($newSuggestions > 0 ? 'warning' : 'success');
+        } catch (\Throwable $exception) {
+            $stats[] = Stat::make('Buzón Sugerencias', '-')
+                ->description('Sin datos')
+                ->icon('heroicon-o-chat-bubble-left-right')
                 ->color('gray');
         }
 
