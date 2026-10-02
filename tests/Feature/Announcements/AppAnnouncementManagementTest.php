@@ -42,11 +42,15 @@ final class AppAnnouncementManagementTest extends TestCase
         ]);
     }
 
-    public function test_activating_announcement_deactivates_others_and_syncs_to_firestore(): void
+    public function test_multiple_announcements_can_be_active_simultaneously(): void
     {
         $mockGateway = Mockery::mock(FirestoreAppAnnouncementGateway::class);
         $mockGateway->shouldReceive('save')
-            ->atLeast()->once()
+            ->once()
+            ->with(Mockery::on(function (array $payload): bool {
+                return $payload['enabled'] === true
+                    && $payload['title'] === 'Banner Especial';
+            }), Mockery::any())
             ->andReturn(FirestoreResult::success());
 
         $this->app->instance(FirestoreAppAnnouncementGateway::class, $mockGateway);
@@ -65,7 +69,7 @@ final class AppAnnouncementManagementTest extends TestCase
         $result = $new->activateAndSync();
 
         $this->assertTrue($result);
-        $this->assertFalse($previous->fresh()->is_active);
+        $this->assertTrue($previous->fresh()->is_active);
         $this->assertTrue($new->fresh()->is_active);
         $this->assertNotNull($new->fresh()->synced_to_firestore_at);
     }

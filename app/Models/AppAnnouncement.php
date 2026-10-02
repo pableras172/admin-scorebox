@@ -116,12 +116,6 @@ final class AppAnnouncement extends Model
      */
     public function activateAndSync(): bool
     {
-        // Deactivate other records in DB and Firestore if single active banner
-        $others = self::where('id', '!=', $this->id)->where('is_active', true)->get();
-        foreach ($others as $other) {
-            $other->deactivateAndSync();
-        }
-
         $this->is_active = true;
         $this->save();
 

@@ -10,9 +10,9 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
@@ -23,14 +23,25 @@ class AppAnnouncementsTable
     {
         return $table
             ->columns([
-                IconColumn::make('is_active')
-                    ->label('En vivo')
-                    ->boolean()
-                    ->trueIcon('heroicon-s-bolt')
-                    ->falseIcon('heroicon-o-minus-circle')
-                    ->trueColor('success')
-                    ->falseColor('gray')
-                    ->alignCenter(),
+                ToggleColumn::make('is_active')
+                    ->label('En vivo (App)')
+                    ->afterStateUpdated(function (AppAnnouncement $record, bool $state): void {
+                        if ($state) {
+                            $record->activateAndSync();
+                            Notification::make()
+                                ->title('Aviso activado en la App')
+                                ->body("'{$record->title}' ahora está visible en la app móvil (enabled: true).")
+                                ->success()
+                                ->send();
+                        } else {
+                            $record->deactivateAndSync();
+                            Notification::make()
+                                ->title('Aviso desactivado')
+                                ->body("'{$record->title}' se ha ocultado en la app móvil (enabled: false).")
+                                ->info()
+                                ->send();
+                        }
+                    }),
 
                 ImageColumn::make('image_url')
                     ->label('Banner')
@@ -72,11 +83,11 @@ class AppAnnouncementsTable
                     ->tooltip(fn (AppAnnouncement $record): ?string => $record->message)
                     ->placeholder('-'),
 
-                IconColumn::make('hide_for_pro')
-                    ->label('Sin PRO')
-                    ->boolean()
-                    ->alignCenter()
-                    ->tooltip('Oculto para usuarios PRO'),
+                TextColumn::make('hide_for_pro')
+                    ->label('PRO')
+                    ->badge()
+                    ->formatStateUsing(fn (bool $state): string => $state ? 'Oculto a PRO' : 'Visible a todos')
+                    ->color(fn (bool $state): string => $state ? 'warning' : 'gray'),
 
                 TextColumn::make('action_text')
                     ->label('Botón')
@@ -99,7 +110,7 @@ class AppAnnouncementsTable
                 TernaryFilter::make('is_active')
                     ->label('Estado en la App')
                     ->placeholder('Todos')
-                    ->trueLabel('Solo el publicado en vivo (enabled: true)')
+                    ->trueLabel('Solo los publicados en vivo (enabled: true)')
                     ->falseLabel('Inactivos (enabled: false)'),
 
                 SelectFilter::make('type')
@@ -146,7 +157,7 @@ class AppAnnouncementsTable
                     }),
 
                 Action::make('deactivateAll')
-                    ->label('Apagar banner en la App')
+                    ->label('Apagar todos los avisos')
                     ->icon('heroicon-o-no-symbol')
                     ->color('danger')
                     ->requiresConfirmation()
@@ -163,47 +174,6 @@ class AppAnnouncementsTable
                     }),
             ])
             ->actions([
-                Action::make('activate')
-                    ->label('Activar en App')
-                    ->icon('heroicon-o-bolt')
-                    ->color('success')
-                    ->visible(fn (AppAnnouncement $record): bool => ! $record->is_active)
-                    ->requiresConfirmation()
-                    ->modalHeading('¿Publicar este aviso en la app ScoreBox?')
-                    ->modalDescription('Este aviso sustituirá al que esté activo actualmente en la app.')
-                    ->action(function (AppAnnouncement $record): void {
-                        $success = $record->activateAndSync();
-
-                        if ($success) {
-                            Notification::make()
-                                ->title('Aviso publicado')
-                                ->body("'{$record->title}' ahora está visible en la app móvil (enabled: true).")
-                                ->success()
-                                ->send();
-                        } else {
-                            Notification::make()
-                                ->title('Error de sincronización')
-                                ->body('No se pudo sincronizar con Firestore.')
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
-                Action::make('deactivate')
-                    ->label('Desactivar')
-                    ->icon('heroicon-o-pause')
-                    ->color('warning')
-                    ->visible(fn (AppAnnouncement $record): bool => (bool) $record->is_active)
-                    ->action(function (AppAnnouncement $record): void {
-                        $record->deactivateAndSync();
-
-                        Notification::make()
-                            ->title('Aviso desactivado')
-                            ->body('El aviso ya no se muestra en la app móvil (enabled: false).')
-                            ->info()
-                            ->send();
-                    }),
-
                 Action::make('duplicate')
                     ->label('Duplicar')
                     ->icon('heroicon-o-document-duplicate')
