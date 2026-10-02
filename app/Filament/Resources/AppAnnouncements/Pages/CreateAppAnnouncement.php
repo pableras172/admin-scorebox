@@ -37,6 +37,8 @@ class CreateAppAnnouncement extends CreateRecord
 
         if ($record->is_active) {
             $record->activateAndSync();
+        } else {
+            $record->syncToFirestore();
         }
     }
 }

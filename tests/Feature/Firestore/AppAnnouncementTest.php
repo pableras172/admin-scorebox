@@ -19,6 +19,21 @@ final class AppAnnouncementTest extends TestCase
         {
             public function __construct(public array &$storage) {}
 
+            public function id(): string
+            {
+                return 'anuncio_test';
+            }
+
+            public function exists(): bool
+            {
+                return ! empty($this->storage);
+            }
+
+            public function data(): array
+            {
+                return $this->storage;
+            }
+
             public function snapshot(): object
             {
                 $data = $this->storage;
@@ -26,6 +41,11 @@ final class AppAnnouncementTest extends TestCase
                 return new class($data)
                 {
                     public function __construct(private readonly array $data) {}
+
+                    public function exists(): bool
+                    {
+                        return ! empty($this->data);
+                    }
 
                     public function data(): array
                     {
@@ -47,6 +67,11 @@ final class AppAnnouncementTest extends TestCase
             public function document(string $id): object
             {
                 return $this->docRef;
+            }
+
+            public function documents(): array
+            {
+                return [$this->docRef];
             }
         };
 
@@ -94,6 +119,21 @@ final class AppAnnouncementTest extends TestCase
         {
             public function __construct(public array &$storage) {}
 
+            public function id(): string
+            {
+                return 'anuncio_ad';
+            }
+
+            public function exists(): bool
+            {
+                return ! empty($this->storage);
+            }
+
+            public function data(): array
+            {
+                return $this->storage;
+            }
+
             public function snapshot(): object
             {
                 $data = $this->storage;
@@ -101,6 +141,11 @@ final class AppAnnouncementTest extends TestCase
                 return new class($data)
                 {
                     public function __construct(private readonly array $data) {}
+
+                    public function exists(): bool
+                    {
+                        return ! empty($this->data);
+                    }
 
                     public function data(): array
                     {
@@ -122,6 +167,11 @@ final class AppAnnouncementTest extends TestCase
             public function document(string $id): object
             {
                 return $this->docRef;
+            }
+
+            public function documents(): array
+            {
+                return [$this->docRef];
             }
         };
 

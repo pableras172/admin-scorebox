@@ -18,9 +18,7 @@ class EditAppAnnouncement extends EditRecord
         return [
             DeleteAction::make()
                 ->after(function (AppAnnouncement $record): void {
-                    if ($record->is_active) {
-                        AppAnnouncement::deactivateAllAndSync();
-                    }
+                    $record->deleteFromFirestore();
                 }),
         ];
     }
@@ -61,11 +59,7 @@ class EditAppAnnouncement extends EditRecord
         if ($record->is_active) {
             $record->activateAndSync();
         } else {
-            // If it was deactivated during edit, ensure Firestore knows it's disabled if no other is active
-            $hasOtherActive = AppAnnouncement::where('id', '!=', $record->id)->where('is_active', true)->exists();
-            if (! $hasOtherActive) {
-                $record->deactivateAndSync();
-            }
+            $record->syncToFirestore();
         }
     }
 }

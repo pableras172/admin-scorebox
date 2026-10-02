@@ -8,6 +8,7 @@ use App\Services\Firestore\FirestoreAppAnnouncementGateway;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 final class AppAnnouncement extends Model
 {
@@ -27,6 +28,7 @@ final class AppAnnouncement extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'firestore_id',
         'title',
         'message',
         'type',
@@ -51,7 +53,7 @@ final class AppAnnouncement extends Model
     }
 
     /**
-     * Scope a query to only include the active announcement.
+     * Scope a query to only include active announcements.
      *
      * @param  Builder<AppAnnouncement>  $query
      * @return Builder<AppAnnouncement>
@@ -62,109 +64,160 @@ final class AppAnnouncement extends Model
     }
 
     /**
+     * Get or generate a clean Firestore document ID (slug).
+     */
+    public function getOrGenerateFirestoreId(): string
+    {
+        if (! empty($this->firestore_id)) {
+            return $this->firestore_id;
+        }
+
+        $slug = Str::slug($this->title ?: 'anuncio', '_') ?: 'anuncio_'.time();
+        $this->firestore_id = $slug;
+
+        return $slug;
+    }
+
+    /**
+     * Save/sync this announcement to Firestore announcements collection.
+     */
+    public function syncToFirestore(): bool
+    {
+        $docId = $this->getOrGenerateFirestoreId();
+
+        /** @var FirestoreAppAnnouncementGateway $gateway */
+        $gateway = app(FirestoreAppAnnouncementGateway::class);
+        $result = $gateway->save([
+            'firestore_id' => $docId,
+            'enabled' => $this->is_active,
+            'title' => $this->title,
+            'message' => $this->message ?? '',
+            'type' => $this->type,
+            'image_url' => $this->image_url ?? '',
+            'action_text' => $this->action_text ?? '',
+            'action_url' => $this->action_url ?? '',
+            'hide_for_pro' => $this->hide_for_pro,
+        ], $docId);
+
+        if ($result->isSuccess()) {
+            $this->updateQuietly([
+                'firestore_id' => $docId,
+                'synced_to_firestore_at' => now(),
+            ]);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Activate this announcement and publish it directly to Firestore.
      */
     public function activateAndSync(): bool
     {
-        self::where('id', '!=', $this->id)->where('is_active', true)->update(['is_active' => false]);
+        // Deactivate other records in DB and Firestore if single active banner
+        $others = self::where('id', '!=', $this->id)->where('is_active', true)->get();
+        foreach ($others as $other) {
+            $other->deactivateAndSync();
+        }
 
-        $this->update([
-            'is_active' => true,
-            'synced_to_firestore_at' => now(),
-        ]);
+        $this->is_active = true;
+        $this->save();
 
-        /** @var FirestoreAppAnnouncementGateway $gateway */
-        $gateway = app(FirestoreAppAnnouncementGateway::class);
-        $result = $gateway->save([
-            'enabled' => true,
-            'title' => $this->title,
-            'message' => $this->message ?? '',
-            'type' => $this->type,
-            'image_url' => $this->image_url ?? '',
-            'action_text' => $this->action_text ?? '',
-            'action_url' => $this->action_url ?? '',
-            'hide_for_pro' => $this->hide_for_pro,
-        ]);
-
-        return $result->isSuccess();
+        return $this->syncToFirestore();
     }
 
     /**
-     * Deactivate this announcement and disable the banner in Firestore.
+     * Deactivate this announcement and disable it in Firestore.
      */
     public function deactivateAndSync(): bool
     {
-        $this->update([
-            'is_active' => false,
-        ]);
+        $this->is_active = false;
+        $this->save();
+
+        return $this->syncToFirestore();
+    }
+
+    /**
+     * Delete from Firestore document.
+     */
+    public function deleteFromFirestore(): bool
+    {
+        if (empty($this->firestore_id)) {
+            return true;
+        }
 
         /** @var FirestoreAppAnnouncementGateway $gateway */
         $gateway = app(FirestoreAppAnnouncementGateway::class);
-        $result = $gateway->save([
-            'enabled' => false,
-            'title' => $this->title,
-            'message' => $this->message ?? '',
-            'type' => $this->type,
-            'image_url' => $this->image_url ?? '',
-            'action_text' => $this->action_text ?? '',
-            'action_url' => $this->action_url ?? '',
-            'hide_for_pro' => $this->hide_for_pro,
-        ]);
+        $result = $gateway->delete($this->firestore_id);
 
         return $result->isSuccess();
     }
 
     /**
-     * Deactivate all announcements and turn off the banner in Firestore.
+     * Deactivate all announcements in MySQL and Firestore.
      */
     public static function deactivateAllAndSync(): bool
     {
-        self::where('is_active', true)->update(['is_active' => false]);
+        $actives = self::where('is_active', true)->get();
+        foreach ($actives as $active) {
+            $active->deactivateAndSync();
+        }
 
-        /** @var FirestoreAppAnnouncementGateway $gateway */
-        $gateway = app(FirestoreAppAnnouncementGateway::class);
-        $current = $gateway->get();
-        $current['enabled'] = false;
-        $result = $gateway->save($current);
-
-        return $result->isSuccess();
+        return true;
     }
 
     /**
-     * Import current live banner from Cloud Firestore into MySQL.
+     * Import/sync all announcements from Firestore collection 'announcements' into MySQL.
+     *
+     * @return int Count of imported/updated records
      */
-    public static function importFromFirestore(): ?self
+    public static function importAllFromFirestore(): int
     {
         /** @var FirestoreAppAnnouncementGateway $gateway */
         $gateway = app(FirestoreAppAnnouncementGateway::class);
-        $data = $gateway->get();
+        $all = $gateway->getAll();
 
-        $title = trim((string) ($data['title'] ?? ''));
-        $message = trim((string) ($data['message'] ?? ''));
-
-        if ($title === '' && $message === '') {
-            return null;
+        if (empty($all)) {
+            return 0;
         }
 
-        $enabled = (bool) ($data['enabled'] ?? false);
+        $count = 0;
 
-        /** @var AppAnnouncement $announcement */
-        $announcement = self::where('title', $title)->first() ?? new self;
-        $announcement->title = $title ?: 'Aviso recuperado de Firestore';
-        $announcement->message = $message;
-        $announcement->type = (string) ($data['type'] ?? self::TYPE_INFO);
-        $announcement->image_url = (string) ($data['image_url'] ?? '');
-        $announcement->action_text = (string) ($data['action_text'] ?? '');
-        $announcement->action_url = (string) ($data['action_url'] ?? '');
-        $announcement->hide_for_pro = (bool) ($data['hide_for_pro'] ?? false);
-        $announcement->is_active = $enabled;
-        $announcement->synced_to_firestore_at = now();
-        $announcement->save();
+        foreach ($all as $docId => $data) {
+            $title = trim((string) ($data['title'] ?? '')) ?: $docId;
 
-        if ($enabled) {
-            self::where('id', '!=', $announcement->id)->where('is_active', true)->update(['is_active' => false]);
+            /** @var AppAnnouncement $record */
+            $record = self::where('firestore_id', $docId)->first()
+                ?? self::where('title', $title)->first()
+                ?? new self;
+
+            $record->firestore_id = $docId;
+            $record->title = $title;
+            $record->message = (string) ($data['message'] ?? '');
+            $record->type = (string) ($data['type'] ?? self::TYPE_INFO);
+            $record->image_url = (string) ($data['image_url'] ?? '');
+            $record->action_text = (string) ($data['action_text'] ?? '');
+            $record->action_url = (string) ($data['action_url'] ?? '');
+            $record->hide_for_pro = (bool) ($data['hide_for_pro'] ?? false);
+            $record->is_active = (bool) ($data['enabled'] ?? false);
+            $record->synced_to_firestore_at = now();
+            $record->save();
+
+            $count++;
         }
 
-        return $announcement;
+        return $count;
+    }
+
+    /**
+     * Import from Firestore and return the active or first record.
+     */
+    public static function importFromFirestore(): ?self
+    {
+        self::importAllFromFirestore();
+
+        return self::active()->first() ?? self::first();
     }
 }

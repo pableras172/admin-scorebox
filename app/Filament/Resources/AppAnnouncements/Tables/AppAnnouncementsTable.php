@@ -43,7 +43,8 @@ class AppAnnouncementsTable
                     ->label('Título / Patrocinador')
                     ->searchable()
                     ->sortable()
-                    ->weight('bold'),
+                    ->weight('bold')
+                    ->description(fn (AppAnnouncement $record): ?string => $record->firestore_id ? "Doc: {$record->firestore_id}" : null),
 
                 TextColumn::make('type')
                     ->label('Tipo')
@@ -98,8 +99,8 @@ class AppAnnouncementsTable
                 TernaryFilter::make('is_active')
                     ->label('Estado en la App')
                     ->placeholder('Todos')
-                    ->trueLabel('Solo el publicado en vivo')
-                    ->falseLabel('Borradores / Inactivos'),
+                    ->trueLabel('Solo el publicado en vivo (enabled: true)')
+                    ->falseLabel('Inactivos (enabled: false)'),
 
                 SelectFilter::make('type')
                     ->label('Tipo de banner')
@@ -123,22 +124,22 @@ class AppAnnouncementsTable
                     ->icon('heroicon-o-plus'),
 
                 Action::make('importFromFirestore')
-                    ->label('Recuperar actual de Firestore')
+                    ->label('Sincronizar desde Firestore')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('primary')
                     ->action(function (): void {
-                        $imported = AppAnnouncement::importFromFirestore();
+                        $count = AppAnnouncement::importAllFromFirestore();
 
-                        if ($imported !== null) {
+                        if ($count > 0) {
                             Notification::make()
-                                ->title('Aviso recuperado con éxito')
-                                ->body("Se ha importado '{$imported->title}' desde Cloud Firestore.")
+                                ->title('Avisos sincronizados')
+                                ->body("Se han importado/actualizado {$count} avisos de la colección 'announcements' de Firestore.")
                                 ->success()
                                 ->send();
                         } else {
                             Notification::make()
-                                ->title('Sin avisos en Firestore')
-                                ->body('No hay ningún aviso o banner configurado actualmente en Firestore.')
+                                ->title('Sin avisos')
+                                ->body("No se encontraron documentos en la colección 'announcements' de Firestore.")
                                 ->info()
                                 ->send();
                         }
@@ -149,14 +150,14 @@ class AppAnnouncementsTable
                     ->icon('heroicon-o-no-symbol')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->modalHeading('¿Apagar el banner en la app ScoreBox?')
-                    ->modalDescription('El banner dejará de mostrarse a los usuarios en la app móvil. Puedes volver a activarlo en cualquier momento.')
+                    ->modalHeading('¿Apagar todos los avisos en la app?')
+                    ->modalDescription('Todos los avisos quedarán marcados como enabled: false en Firestore. Podrás volver a activar cualquiera cuando quieras.')
                     ->action(function (): void {
                         AppAnnouncement::deactivateAllAndSync();
 
                         Notification::make()
-                            ->title('Banner desactivado')
-                            ->body('Se ha desactivado la visibilidad del banner en la aplicación móvil.')
+                            ->title('Banners apagados')
+                            ->body('Se han desactivado todos los avisos en la aplicación móvil.')
                             ->warning()
                             ->send();
                     }),
@@ -176,7 +177,7 @@ class AppAnnouncementsTable
                         if ($success) {
                             Notification::make()
                                 ->title('Aviso publicado')
-                                ->body("'{$record->title}' ya está visible en la app móvil.")
+                                ->body("'{$record->title}' ahora está visible en la app móvil (enabled: true).")
                                 ->success()
                                 ->send();
                         } else {
@@ -198,7 +199,7 @@ class AppAnnouncementsTable
 
                         Notification::make()
                             ->title('Aviso desactivado')
-                            ->body('El aviso ya no se muestra en la app móvil.')
+                            ->body('El aviso ya no se muestra en la app móvil (enabled: false).')
                             ->info()
                             ->send();
                     }),
@@ -211,9 +212,11 @@ class AppAnnouncementsTable
                         /** @var AppAnnouncement $clone */
                         $clone = $record->replicate();
                         $clone->title = "{$record->title} (Copia)";
+                        $clone->firestore_id = null;
                         $clone->is_active = false;
                         $clone->synced_to_firestore_at = null;
                         $clone->save();
+                        $clone->syncToFirestore();
 
                         Notification::make()
                             ->title('Aviso duplicado')
@@ -225,9 +228,7 @@ class AppAnnouncementsTable
                 EditAction::make(),
                 DeleteAction::make()
                     ->after(function (AppAnnouncement $record): void {
-                        if ($record->is_active) {
-                            AppAnnouncement::deactivateAllAndSync();
-                        }
+                        $record->deleteFromFirestore();
                     }),
             ])
             ->defaultSort('is_active', 'desc');
