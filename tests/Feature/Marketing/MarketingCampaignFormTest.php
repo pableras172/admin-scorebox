@@ -26,6 +26,7 @@ final class MarketingCampaignFormTest extends TestCase
 
     public function test_rich_editor_attach_files_action(): void
     {
+        \Illuminate\Support\Facades\Storage::fake('public');
         $user = User::factory()->create();
         $file = UploadedFile::fake()->image('test.jpg');
 
