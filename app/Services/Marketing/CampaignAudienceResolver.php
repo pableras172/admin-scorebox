@@ -45,7 +45,7 @@ class CampaignAudienceResolver
             default => [],
         };
 
-        $result = $this->userGateway->list($filters, 100);
+        $result = $this->userGateway->all($filters);
 
         if (! $result->isSuccess()) {
             Log::error('Failed to retrieve users from Firestore for campaign audience resolution.', [

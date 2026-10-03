@@ -18,8 +18,8 @@ class ListScoreBoxUsers extends ListRecords
     {
         parent::mount();
 
-        session()->put($this->getTablePerPageSessionKey(), 10);
-        $this->tableRecordsPerPage = 10;
+        session()->put($this->getTablePerPageSessionKey(), 50);
+        $this->tableRecordsPerPage = 50;
     }
 
     public function setPage(int|string $page, ?string $pageName = null): void

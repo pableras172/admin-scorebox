@@ -231,6 +231,79 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
         $this->assertSame('abc123', $result->data()[0]['uid']);
     }
 
+    public function test_it_retrieves_all_users_without_limit(): void
+    {
+        $document = new class(['uid' => 'user_unlimited', 'email' => 'unlimited@example.com'])
+        {
+            public function __construct(private readonly array $data) {}
+
+            public function data(): array
+            {
+                return $this->data;
+            }
+        };
+
+        $query = new class([$document])
+        {
+            public function __construct(private readonly array $docs) {}
+
+            public function where(string $field, string $operator, mixed $value): object
+            {
+                return $this;
+            }
+
+            public function orderBy(string $field, string $direction): object
+            {
+                return $this;
+            }
+
+            public function documents(): array
+            {
+                return $this->docs;
+            }
+        };
+
+        $collection = new class($query)
+        {
+            public function __construct(private readonly object $query) {}
+
+            public function orderBy(string $field, string $direction): object
+            {
+                return $this->query;
+            }
+
+            public function where(string $field, string $operator, mixed $value): object
+            {
+                return $this->query;
+            }
+
+            public function documents(): array
+            {
+                return $this->query->documents();
+            }
+        };
+
+        $client = new class($collection)
+        {
+            public function __construct(private readonly object $collection) {}
+
+            public function collection(string $name): object
+            {
+                return $this->collection;
+            }
+        };
+
+        $factory = Mockery::mock(FirestoreClientFactory::class);
+        $factory->shouldReceive('make')->once()->andReturn($client);
+
+        $gateway = new FirestoreUserGateway($factory);
+        $result = $gateway->all();
+
+        $this->assertTrue($result->isSuccess());
+        $this->assertCount(1, $result->data());
+        $this->assertSame('user_unlimited', $result->data()[0]['uid']);
+    }
+
     public function test_it_counts_all_users_using_aggregation_and_caches_result(): void
     {
         Cache::flush();

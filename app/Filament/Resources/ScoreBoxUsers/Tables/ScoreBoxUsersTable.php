@@ -127,15 +127,15 @@ class ScoreBoxUsersTable
 
     public static function configure(Table $table): Table
     {
-        $records = function (int|string $page = 1, int|string $recordsPerPage = 10, ?array $filters = null, ?string $search = null): LengthAwarePaginator {
+        $records = function (int|string $page = 1, int|string $recordsPerPage = 50, ?array $filters = null, ?string $search = null): LengthAwarePaginator {
             $page = max(1, (int) $page);
-            $recordsPerPage = is_numeric($recordsPerPage) ? (int) $recordsPerPage : 10;
-            $recordsPerPage = max(1, $recordsPerPage);
+            $isAll = $recordsPerPage === 'all' || (int) $recordsPerPage <= 0;
+            $perPage = $isAll ? PHP_INT_MAX : max(1, (int) $recordsPerPage);
 
-            $result = app(FirestoreUserGateway::class)->list([], 100);
+            $result = app(FirestoreUserGateway::class)->all();
 
             if (! $result->isSuccess()) {
-                return new LengthAwarePaginator(collect(), 0, $recordsPerPage, $page);
+                return new LengthAwarePaginator(collect(), 0, $perPage === PHP_INT_MAX ? 50 : $perPage, $page);
             }
 
             $users = collect($result->data() ?? [])
@@ -169,21 +169,26 @@ class ScoreBoxUsersTable
             $users = self::filterUsersForSearch($users, $search);
 
             $total = $users->count();
-            $items = $users
-                ->slice(($page - 1) * $recordsPerPage, $recordsPerPage)
-                ->values();
+            $items = $isAll
+                ? $users
+                : $users->slice(($page - 1) * $perPage, $perPage)->values();
 
             return new LengthAwarePaginator(
                 $items,
                 $total,
-                $recordsPerPage,
+                $isAll ? max(1, $total) : $perPage,
                 $page,
             );
         };
 
-        $countryOptions = function () use ($records): array {
-            return collect($records()->items())
-                ->map(fn (FirestoreUser $user) => self::normalizeStringValue($user->country ?? null))
+        $countryOptions = function (): array {
+            $result = app(FirestoreUserGateway::class)->all();
+            if (! $result->isSuccess()) {
+                return [];
+            }
+
+            return collect($result->data() ?? [])
+                ->map(fn (array $user) => self::normalizeStringValue($user['country'] ?? null))
                 ->filter(fn (?string $country) => filled($country))
                 ->unique()
                 ->sort()
@@ -257,9 +262,14 @@ class ScoreBoxUsersTable
                     ->placeholder('Todos los países'),
                 SelectFilter::make('studyType')
                     ->label('Tipo de estudio')
-                    ->options(function () use ($records): array {
-                        return collect($records()->items())
-                            ->map(fn (FirestoreUser $user) => self::normalizeStringValue($user->studyType ?? null))
+                    ->options(function (): array {
+                        $result = app(FirestoreUserGateway::class)->all();
+                        if (! $result->isSuccess()) {
+                            return [];
+                        }
+
+                        return collect($result->data() ?? [])
+                            ->map(fn (array $user) => self::normalizeStringValue($user['studyType'] ?? null))
                             ->filter(fn (?string $studyType) => filled($studyType))
                             ->unique()
                             ->sort()
@@ -394,9 +404,25 @@ class ScoreBoxUsersTable
                 ViewAction::make()
                     ->url(fn (FirestoreUser $record): string => ScoreBoxUserResource::getUrl('view', ['record' => $record->uid])),
             ])
+            ->headerActions([
+                Action::make('refreshFromFirestore')
+                    ->label('Refrescar de Firestore')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('primary')
+                    ->action(function (): void {
+                        app(FirestoreUserGateway::class)->clearCache();
+                        app(FirestoreUserGateway::class)->all([], fresh: true);
+
+                        Notification::make()
+                            ->title('Usuarios actualizados')
+                            ->body('Se han recargado todos los usuarios desde Cloud Firestore en tiempo real.')
+                            ->success()
+                            ->send();
+                    }),
+            ])
             ->emptyStateHeading('No hay usuarios en Firestore')
             ->emptyStateDescription('La colección de usuarios de la aplicación móvil aún no tiene documentos o la conexión falla.')
-            ->paginated([10, 25, 50])
-            ->defaultPaginationPageOption(10);
+            ->paginated([25, 50, 100, 'all'])
+            ->defaultPaginationPageOption(50);
     }
 }

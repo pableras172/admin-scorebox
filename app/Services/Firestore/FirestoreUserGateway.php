@@ -202,15 +202,22 @@ class FirestoreUserGateway
         }
     }
 
-    public function list(array $filters = [], int $limit = 25, bool $fresh = false): FirestoreResult
+    public function all(array $filters = [], bool $fresh = false): FirestoreResult
     {
-        if ($limit < 1 || $limit > self::MAX_LIST_LIMIT) {
-            return FirestoreResult::failure('INVALID_LIMIT', 'The Firestore query limit must be between 1 and 100.', [
+        return $this->list($filters, null, 0, $fresh);
+    }
+
+    public function list(array $filters = [], ?int $limit = 25, int $offset = 0, bool $fresh = false): FirestoreResult
+    {
+        if ($limit !== null && $limit < 1) {
+            return FirestoreResult::failure('INVALID_LIMIT', 'The Firestore query limit must be at least 1.', [
                 'limit' => $limit,
             ]);
         }
 
-        $cacheKey = 'firestore:users:list:'.md5(json_encode($filters).':'.$limit);
+        $cacheKey = $limit === null
+            ? 'firestore:users:all:'.md5(json_encode($filters))
+            : 'firestore:users:list:'.md5(json_encode($filters).':'.$limit.':'.$offset);
 
         if (! $fresh && Cache::has($cacheKey)) {
             $cached = Cache::get($cacheKey);
@@ -224,6 +231,7 @@ class FirestoreUserGateway
                 'collection' => self::COLLECTION_NAME,
                 'filters' => $filters,
                 'limit' => $limit,
+                'offset' => $offset,
             ]);
 
             $client = $this->factory->make();
@@ -233,10 +241,19 @@ class FirestoreUserGateway
                 $query = $query->where((string) $field, '==', $value);
             }
 
-            $documents = $query
-                ->orderBy('createdAt', 'DESC')
-                ->limit($limit)
-                ->documents();
+            if (method_exists($query, 'orderBy')) {
+                $query = $query->orderBy('createdAt', 'DESC');
+            }
+
+            if ($offset > 0 && method_exists($query, 'offset')) {
+                $query = $query->offset($offset);
+            }
+
+            if ($limit !== null && method_exists($query, 'limit')) {
+                $query = $query->limit($limit);
+            }
+
+            $documents = $query->documents();
             $users = [];
 
             foreach ($documents as $index => $document) {
@@ -265,6 +282,7 @@ class FirestoreUserGateway
 
             $result = FirestoreResult::success($users, [
                 'limit' => $limit,
+                'offset' => $offset,
                 'count' => count($users),
                 'collection' => self::COLLECTION_NAME,
             ]);
@@ -276,23 +294,27 @@ class FirestoreUserGateway
             Log::warning('Firestore user list validation failed.', [
                 'filters' => $filters,
                 'limit' => $limit,
+                'offset' => $offset,
                 'error' => $exception->getMessage(),
             ]);
 
             return FirestoreResult::failure('INVALID_DOCUMENT', $exception->getMessage(), [
                 'filters' => $filters,
                 'limit' => $limit,
+                'offset' => $offset,
             ]);
         } catch (RuntimeException|\Throwable $exception) {
             Log::error('Firestore user list lookup failed.', [
                 'filters' => $filters,
                 'limit' => $limit,
+                'offset' => $offset,
                 'error' => $exception->getMessage(),
             ]);
 
             return FirestoreResult::failure('FIRESTORE_ERROR', 'Unable to list Firestore users at this time.', [
                 'filters' => $filters,
                 'limit' => $limit,
+                'offset' => $offset,
             ]);
         }
     }
@@ -301,6 +323,9 @@ class FirestoreUserGateway
     {
         Cache::forget('firestore:users:count_all');
         Cache::forget('firestore:users:count_by_premium');
+        Cache::forget('firestore:users:all:'.md5(json_encode([])));
+        Cache::forget('firestore:users:all:'.md5(json_encode(['isPremium' => true])));
+        Cache::forget('firestore:users:all:'.md5(json_encode(['isPremium' => false])));
     }
 
     private function maskSensitiveFields(array $payload): array

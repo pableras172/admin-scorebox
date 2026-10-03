@@ -59,8 +59,8 @@ final class CampaignAudienceResolverTest extends TestCase
         ]);
 
         $gateway = Mockery::mock(FirestoreUserGateway::class);
-        $gateway->shouldReceive('list')
-            ->with([], 100)
+        $gateway->shouldReceive('all')
+            ->with([])
             ->once()
             ->andReturn(FirestoreResult::success($mockUsers, []));
 
@@ -98,13 +98,13 @@ final class CampaignAudienceResolverTest extends TestCase
         ];
 
         $gateway = Mockery::mock(FirestoreUserGateway::class);
-        $gateway->shouldReceive('list')
-            ->with(['isPremium' => false], 100)
+        $gateway->shouldReceive('all')
+            ->with(['isPremium' => false])
             ->once()
             ->andReturn(FirestoreResult::success([$mockUsers[0]], []));
 
-        $gateway->shouldReceive('list')
-            ->with(['isPremium' => true], 100)
+        $gateway->shouldReceive('all')
+            ->with(['isPremium' => true])
             ->once()
             ->andReturn(FirestoreResult::success([$mockUsers[1]], []));
 
