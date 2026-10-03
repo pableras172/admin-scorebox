@@ -5,12 +5,20 @@ declare(strict_types=1);
 namespace Tests\Feature\Marketing;
 
 use App\Filament\Resources\MarketingCampaigns\Pages\CreateMarketingCampaign;
+use App\Filament\Resources\MarketingCampaigns\Pages\EditMarketingCampaign;
 use App\Models\MarketingCampaign;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Livewire\Livewire;
 use Tests\TestCase;
+use Tiptap\Editor;
+use Tiptap\Extensions\StarterKit;
+use Tiptap\Marks\Link;
+use Tiptap\Nodes\Table;
+use Tiptap\Nodes\TableCell;
+use Tiptap\Nodes\TableHeader;
+use Tiptap\Nodes\TableRow;
 
 final class MarketingCampaignFormTest extends TestCase
 {
@@ -238,6 +246,98 @@ final class MarketingCampaignFormTest extends TestCase
         ]);
 
         $this->assertStringContainsString('test.gif', $jsonWithImage->getHtmlContent());
+    }
+
+    public function test_it_saves_campaign_with_html_link_without_stripping_anchor(): void
+    {
+        $campaign = MarketingCampaign::create([
+            'subject' => 'Novedades ScoreBox',
+            'content' => '<p><a href="https://scorebox.pro/open">📱 Abrir ScoreBox</a></p>',
+            'target_segment' => MarketingCampaign::SEGMENT_ALL,
+            'campaign_type' => MarketingCampaign::TYPE_STANDARD,
+            'is_test' => true,
+        ]);
+
+        $this->assertStringContainsString('href="https://scorebox.pro/open"', $campaign->fresh()->content);
+    }
+
+    public function test_edit_marketing_campaign_preserves_html_links_when_saving(): void
+    {
+        $campaign = MarketingCampaign::create([
+            'subject' => 'Novedades ScoreBox',
+            'content' => '<p><a href="https://scorebox.pro/open">📱 Abrir ScoreBox</a></p>',
+            'target_segment' => MarketingCampaign::SEGMENT_ALL,
+            'campaign_type' => MarketingCampaign::TYPE_STANDARD,
+            'is_test' => true,
+        ]);
+
+        $admin = User::factory()->create();
+
+        Livewire::actingAs($admin)
+            ->test(EditMarketingCampaign::class, [
+                'record' => $campaign->id,
+            ])
+            ->fillForm([
+                'content' => '<p><a href="https://scorebox.pro/open">📱 Abrir ScoreBox</a></p>',
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertStringContainsString('href="https://scorebox.pro/open"', $campaign->fresh()->content);
+    }
+
+    public function test_tiptap_editor_converts_link_with_div_or_inside_table(): void
+    {
+        $input = '<table><tbody><tr><td><div style="text-align:center;"><a href="https://scorebox.pro/open">📱 Abrir ScoreBox &rarr;</a></div></td></tr></tbody></table>';
+        $editor = MarketingCampaign::createTipTapEditor()->setContent($input);
+        $json = $editor->getDocument();
+        $html = $editor->getHTML();
+
+        // Let's also test when wrapped in <p>
+        $pInput = '<table><tbody><tr><td><p><a href="https://scorebox.pro/open">📱 Abrir ScoreBox &rarr;</a></p></td></tr></tbody></table>';
+        $pEditor = MarketingCampaign::createTipTapEditor()->setContent($pInput);
+        $pHtml = $pEditor->getHTML();
+
+        $customLink = new class extends Link
+        {
+            public function addAttributes()
+            {
+                return [
+                    'href' => [],
+                    'target' => [],
+                    'rel' => [],
+                    'class' => [],
+                    'style' => [],
+                ];
+            }
+        };
+
+        $customEditor = new Editor([
+            'extensions' => [
+                new StarterKit,
+                $customLink,
+                new Table,
+                new TableRow,
+                new TableCell,
+                new TableHeader,
+            ],
+        ]);
+
+        $styledInput = '<table><tbody><tr><td><p><a target="_blank" rel="noopener noreferrer nofollow" class="button-link" href="https://scorebox.pro/open"><strong>📱 Abrir ScoreBox &rarr;</strong></a></p></td></tr></tbody></table>';
+        $styledHtml = MarketingCampaign::createTipTapEditor()->setContent($styledInput)->getHTML();
+
+        $this->assertStringContainsString('href="https://scorebox.pro/open"', $styledHtml);
+        $this->assertStringContainsString('class="button-link"', $styledHtml);
+        $this->assertStringContainsString('<strong>📱 Abrir ScoreBox →</strong>', $styledHtml);
+    }
+
+    public function test_full_campaign_preserves_all_open_app_links(): void
+    {
+        $campaignHtml = '<table><tbody><tr><td rowspan="1" colspan="1"><p><strong>1</strong></p><p><a target="_blank" rel="noopener noreferrer nofollow" class="button-link" href="https://scorebox.pro/open"><strong>📱 Abrir ScoreBox &rarr;</strong></a></p></td></tr></tbody></table><table><tbody><tr><td rowspan="1" colspan="1"><p><strong>2</strong></p><p><a target="_blank" rel="noopener noreferrer nofollow" class="button-link" href="https://scorebox.pro/open"><strong>📱 Abrir ScoreBox &rarr;</strong></a></p></td></tr></tbody></table>';
+        $rendered = MarketingCampaign::createTipTapEditor()->setContent($campaignHtml)->getHTML();
+
+        $this->assertSame(2, substr_count($rendered, 'https://scorebox.pro/open'));
+        $this->assertSame(2, substr_count($rendered, 'class="button-link"'));
     }
 
     public function test_process_content_for_email_preserves_external_urls(): void

@@ -64,10 +64,16 @@
         }
         .content a.button-link,
         .content .button-link {
+            display: inline-block !important;
             background-color: #6650a4 !important;
             color: #ffffff !important;
             text-decoration: none !important;
             font-weight: 700 !important;
+            padding: 12px 24px !important;
+            border-radius: 8px !important;
+            box-shadow: 0 3px 8px rgba(102, 80, 164, 0.25) !important;
+            margin: 10px 0 6px !important;
+            text-align: center !important;
         }
         .content img {
             max-width: 100% !important;
