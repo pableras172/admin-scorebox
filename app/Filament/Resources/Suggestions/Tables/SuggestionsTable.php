@@ -269,6 +269,7 @@ class SuggestionsTable
                             supportMessage: (string) $data['message'],
                             userName: $record->name ?: 'músico',
                             promoCode: $promoCode,
+                            recipientEmail: $record->email,
                         ));
 
                         $record->update([

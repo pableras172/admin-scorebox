@@ -176,12 +176,12 @@
 
                 <div class="form-group">
                     <label for="email">Tu Correo Electrónico *</label>
-                    <input type="email" name="email" id="email" value="{{ old('email') }}" placeholder="tuemail@ejemplo.com" required>
+                    <input type="email" name="email" id="email" value="{{ old('email', request('email')) }}" placeholder="tuemail@ejemplo.com" required>
                 </div>
 
                 <div class="form-group">
                     <label for="name">Tu Nombre (Opcional)</label>
-                    <input type="text" name="name" id="name" value="{{ old('name') }}" placeholder="Ej: Pablo">
+                    <input type="text" name="name" id="name" value="{{ old('name', request('name')) }}" placeholder="Ej: Pablo">
                 </div>
 
                 <div class="form-group">

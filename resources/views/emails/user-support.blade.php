@@ -130,6 +130,30 @@
                             </div>
                         @endif
 
+                        @php
+                            $suggestionParams = [];
+                            if (! empty($recipientEmail)) {
+                                $suggestionParams['email'] = $recipientEmail;
+                            }
+                            if (! empty($userName) && $userName !== 'músico') {
+                                $suggestionParams['name'] = $userName;
+                            }
+                            $suggestionUrl = route('suggestions.create', $suggestionParams);
+                        @endphp
+
+                        <div style="background-color: #f7f2fa; border-radius: 12px; padding: 22px 24px; margin: 28px 0; border: 1px solid #e8def8; text-align: center;">
+                            <p style="margin: 0 0 8px; font-weight: 700; color: #1c1b1f; font-size: 16px;">
+                                💬 ¿Quieres dejar algún comentario sobre la aplicación?
+                            </p>
+                            <p style="margin: 0 0 16px; color: #49454f; font-size: 14px; line-height: 1.5;">
+                                Tu opinión nos ayuda a hacer de ScoreBox la mejor herramienta para músicos. Si tienes sugerencias, ideas de funciones o mejoras, nos encantará escucharte.
+                            </p>
+                            <a href="{{ $suggestionUrl }}"
+                               style="display: inline-block; background-color: #6650a4; color: #ffffff !important; text-decoration: none; padding: 11px 24px; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 2px 6px rgba(102, 80, 164, 0.25);">
+                                Dejar comentario o sugerencia &rarr;
+                            </a>
+                        </div>
+
                         <p style="margin-top: 28px; color: #49454f;">
                             Atentamente,<br>
                             <strong>Pablo de ScoreBox</strong>

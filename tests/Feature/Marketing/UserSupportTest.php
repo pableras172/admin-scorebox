@@ -29,6 +29,24 @@ final class UserSupportTest extends TestCase
         $this->assertStringContainsString('Gracias por ponerte en contacto.', $rendered);
         $this->assertStringContainsString('PLAY-STORE-CODE-1234', $rendered);
         $this->assertStringContainsString('Canjear', $rendered);
+        $this->assertStringContainsString('¿Quieres dejar algún comentario sobre la aplicación?', $rendered);
+        $this->assertStringContainsString(route('suggestions.create'), $rendered);
+    }
+
+    public function test_user_support_mailable_renders_suggestion_link_with_prefilled_params(): void
+    {
+        $mailable = new UserSupportMailable(
+            supportSubject: 'Soporte ScoreBox',
+            supportMessage: 'Prueba de enlace a buzón',
+            userName: 'David',
+            promoCode: 'TEST-CODE-999',
+            recipientEmail: 'david@scorebox.app',
+        );
+
+        $rendered = $mailable->render();
+        $this->assertStringContainsString('david%40scorebox.app', $rendered);
+        $this->assertStringContainsString('David', $rendered);
+        $this->assertStringContainsString('Dejar comentario o sugerencia', $rendered);
     }
 
     public function test_can_assign_available_promo_code_to_user_email(): void

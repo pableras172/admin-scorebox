@@ -41,6 +41,18 @@ final class SuggestionFeatureTest extends TestCase
         ]);
     }
 
+    public function test_public_web_form_prefills_email_and_name_from_query_parameters(): void
+    {
+        $response = $this->get(route('suggestions.create', [
+            'email' => 'prefilled@scorebox.app',
+            'name' => 'Carlos Flauta',
+        ]));
+
+        $response->assertSuccessful();
+        $response->assertSee('value="prefilled@scorebox.app"', false);
+        $response->assertSee('value="Carlos Flauta"', false);
+    }
+
     public function test_api_endpoint_stores_suggestion_from_mobile_app(): void
     {
         $payload = [

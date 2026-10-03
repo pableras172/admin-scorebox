@@ -69,7 +69,7 @@ final class ScheduledCampaignTest extends TestCase
     public function test_audience_resolver_filters_by_target_instrument(): void
     {
         $mockGateway = Mockery::mock(FirestoreUserGateway::class);
-        $mockGateway->shouldReceive('list')
+        $mockGateway->shouldReceive('all')
             ->andReturn(FirestoreResult::success([
                 [
                     'uid' => 'user-1',

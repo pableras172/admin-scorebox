@@ -19,6 +19,7 @@ class UserSupportMailable extends Mailable
         public string $supportMessage,
         public ?string $userName = null,
         public ?string $promoCode = null,
+        public ?string $recipientEmail = null,
     ) {}
 
     public function envelope(): Envelope
@@ -37,6 +38,7 @@ class UserSupportMailable extends Mailable
                 'supportMessage' => $this->supportMessage,
                 'userName' => $this->userName,
                 'promoCode' => $this->promoCode,
+                'recipientEmail' => $this->recipientEmail,
             ],
         );
     }

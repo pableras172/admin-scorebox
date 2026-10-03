@@ -354,6 +354,7 @@ class ScoreBoxUsersTable
                             supportMessage: 'Aquí tienes tu código promocional para disfrutar de la suscripción PRO en ScoreBox.',
                             userName: $record->displayName ?: 'músico',
                             promoCode: $promo->code,
+                            recipientEmail: $record->email,
                         ));
 
                         Notification::make()
@@ -392,6 +393,7 @@ class ScoreBoxUsersTable
                             supportSubject: (string) $data['subject'],
                             supportMessage: (string) $data['message'],
                             userName: $record->displayName ?: null,
+                            recipientEmail: $record->email,
                         ));
 
                         Notification::make()
