@@ -2,12 +2,22 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\ScoreBoxUsers\Pages\ViewScoreBoxUser;
 use App\Filament\Resources\ScoreBoxUsers\Tables\ScoreBoxUsersTable;
 use App\Models\FirestoreUser;
+use App\Models\PromotionalCode;
+use App\Models\User;
+use App\Services\Firestore\FirestoreResult;
+use App\Services\Firestore\FirestoreUserGateway;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+use Mockery;
 use Tests\TestCase;
 
 class ScoreBoxUsersTableSearchTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_quick_search_matches_display_name_or_email(): void
     {
         $users = collect([
@@ -42,5 +52,54 @@ class ScoreBoxUsersTableSearchTest extends TestCase
 
         $filteredByStudyType = ScoreBoxUsersTable::filterUsersForFilters($users, ['studyType' => 'Máster']);
         $this->assertSame(['u2'], $filteredByStudyType->pluck('uid')->all());
+    }
+
+    public function test_view_scorebox_user_renders_without_type_error(): void
+    {
+        $admin = User::factory()->create();
+        $mockGateway = Mockery::mock(FirestoreUserGateway::class);
+        $mockGateway->shouldReceive('getById')
+            ->with('user-123')
+            ->andReturn(FirestoreResult::success([
+                'uid' => 'user-123',
+                'email' => 'musician@example.com',
+                'displayName' => 'Carlos Músico',
+                'isPremium' => true,
+            ]));
+        $this->app->instance(FirestoreUserGateway::class, $mockGateway);
+
+        Livewire::actingAs($admin)
+            ->test(ViewScoreBoxUser::class, ['record' => 'user-123'])
+            ->assertSuccessful()
+            ->assertSet('data.displayName', 'Carlos Músico')
+            ->assertSee('Detalle del usuario Firestore');
+    }
+
+    public function test_view_scorebox_user_renders_with_assigned_promo_code(): void
+    {
+        $admin = User::factory()->create();
+        PromotionalCode::create([
+            'code' => 'PROMO-SCORE-123',
+            'assigned_email' => 'musician@example.com',
+            'assigned_at' => now(),
+        ]);
+
+        $mockGateway = Mockery::mock(FirestoreUserGateway::class);
+        $mockGateway->shouldReceive('getById')
+            ->with('user-123')
+            ->andReturn(FirestoreResult::success([
+                'uid' => 'user-123',
+                'email' => 'musician@example.com',
+                'displayName' => 'Carlos Músico',
+                'isPremium' => true,
+            ]));
+        $this->app->instance(FirestoreUserGateway::class, $mockGateway);
+
+        Livewire::actingAs($admin)
+            ->test(ViewScoreBoxUser::class, ['record' => 'user-123'])
+            ->assertSuccessful()
+            ->assertSet('data.assigned_promo_code', function ($val) {
+                return str_contains((string) $val, 'PROMO-SCORE-123');
+            });
     }
 }

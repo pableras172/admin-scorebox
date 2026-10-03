@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ScoreBoxUsers\Schemas;
 
+use App\Models\FirestoreUser;
 use App\Models\PromotionalCode;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\TextInput;
