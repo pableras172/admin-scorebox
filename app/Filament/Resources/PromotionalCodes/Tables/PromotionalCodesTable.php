@@ -7,8 +7,10 @@ namespace App\Filament\Resources\PromotionalCodes\Tables;
 use App\Models\PromotionalCode;
 use App\Services\Marketing\PromotionalCodeImporter;
 use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -167,6 +169,14 @@ class PromotionalCodesTable
                     ->modalHeading('Eliminar Código Promocional')
                     ->modalDescription('Esta acción eliminará el código del inventario de forma permanente.')
                     ->modalSubmitActionLabel('Sí, eliminar'),
+            ])
+            ->bulkActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()
+                        ->modalHeading('Eliminar Códigos Promocionales seleccionados')
+                        ->modalDescription('¿Estás seguro de que deseas eliminar permanentemente los códigos seleccionados del inventario?')
+                        ->modalSubmitActionLabel('Sí, eliminar seleccionados'),
+                ]),
             ])
             ->defaultSort('id', 'desc');
     }

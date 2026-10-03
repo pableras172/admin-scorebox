@@ -10,6 +10,7 @@ use App\Models\MarketingCampaign;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 use Tiptap\Editor;
@@ -26,7 +27,7 @@ final class MarketingCampaignFormTest extends TestCase
 
     public function test_rich_editor_attach_files_action(): void
     {
-        \Illuminate\Support\Facades\Storage::fake('public');
+        Storage::fake('public');
         $user = User::factory()->create();
         $file = UploadedFile::fake()->image('test.jpg');
 

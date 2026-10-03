@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Marketing;
 
+use App\Filament\Resources\PromotionalCodes\Pages\ListPromotionalCodes;
 use App\Filament\Resources\PromotionalCodes\PromotionalCodeResource;
 use App\Models\MarketingCampaign;
 use App\Models\PromotionalCode;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class PromotionalCodeManagementTest extends TestCase
@@ -99,5 +102,22 @@ final class PromotionalCodeManagementTest extends TestCase
         $this->assertSame('Marketing', PromotionalCodeResource::getNavigationGroup());
         $this->assertSame('código promocional', PromotionalCodeResource::getModelLabel());
         $this->assertSame('códigos promocionales', PromotionalCodeResource::getPluralModelLabel());
+    }
+
+    public function test_it_can_bulk_delete_promotional_codes(): void
+    {
+        $admin = User::factory()->create();
+        $code1 = PromotionalCode::factory()->create(['code' => 'BULK-DELETE-1']);
+        $code2 = PromotionalCode::factory()->create(['code' => 'BULK-DELETE-2']);
+        $code3 = PromotionalCode::factory()->create(['code' => 'KEEP-ME']);
+
+        Livewire::actingAs($admin)
+            ->test(ListPromotionalCodes::class)
+            ->callTableBulkAction('delete', [$code1, $code2])
+            ->assertHasNoTableActionErrors();
+
+        $this->assertDatabaseMissing('promotional_codes', ['id' => $code1->id]);
+        $this->assertDatabaseMissing('promotional_codes', ['id' => $code2->id]);
+        $this->assertDatabaseHas('promotional_codes', ['id' => $code3->id]);
     }
 }
