@@ -39,13 +39,7 @@ class CampaignAudienceResolver
                 ->values();
         }
 
-        $filters = match ($segment) {
-            MarketingCampaign::SEGMENT_FREE => ['isPremium' => false],
-            MarketingCampaign::SEGMENT_PREMIUM => ['isPremium' => true],
-            default => [],
-        };
-
-        $result = $this->userGateway->all($filters);
+        $result = $this->userGateway->all();
 
         if (! $result->isSuccess()) {
             Log::error('Failed to retrieve users from Firestore for campaign audience resolution.', [
@@ -84,7 +78,9 @@ class CampaignAudienceResolver
                 continue;
             }
 
-            $isPremium = (bool) ($user['isPremium'] ?? false);
+            $subscription = strtolower(trim((string) ($user['subscription'] ?? $user['subscrition'] ?? '')));
+            $isPremium = (is_bool($user['isPremium'] ?? null) ? $user['isPremium'] : filter_var($user['isPremium'] ?? false, FILTER_VALIDATE_BOOLEAN))
+                || in_array($subscription, ['pro', 'premium', 'activo', 'active'], true);
 
             // Double check segment filter in memory
             if ($segment === MarketingCampaign::SEGMENT_FREE && $isPremium) {

@@ -241,7 +241,8 @@ class FirestoreUserGateway
                 $query = $query->where((string) $field, '==', $value);
             }
 
-            if (method_exists($query, 'orderBy')) {
+            // Only apply Firestore orderBy when no filters are present to avoid requiring composite indexes
+            if (empty($filters) && method_exists($query, 'orderBy')) {
                 $query = $query->orderBy('createdAt', 'DESC');
             }
 

@@ -60,7 +60,6 @@ final class CampaignAudienceResolverTest extends TestCase
 
         $gateway = Mockery::mock(FirestoreUserGateway::class);
         $gateway->shouldReceive('all')
-            ->with([])
             ->once()
             ->andReturn(FirestoreResult::success($mockUsers, []));
 
@@ -95,18 +94,19 @@ final class CampaignAudienceResolverTest extends TestCase
                 'displayName' => 'Premium User',
                 'isPremium' => true,
             ],
+            [
+                'uid' => 'u3',
+                'email' => 'pro-sub@example.com',
+                'displayName' => 'Pro Sub User',
+                'isPremium' => false,
+                'subscription' => 'pro',
+            ],
         ];
 
         $gateway = Mockery::mock(FirestoreUserGateway::class);
         $gateway->shouldReceive('all')
-            ->with(['isPremium' => false])
-            ->once()
-            ->andReturn(FirestoreResult::success([$mockUsers[0]], []));
-
-        $gateway->shouldReceive('all')
-            ->with(['isPremium' => true])
-            ->once()
-            ->andReturn(FirestoreResult::success([$mockUsers[1]], []));
+            ->twice()
+            ->andReturn(FirestoreResult::success($mockUsers, []));
 
         $resolver = new CampaignAudienceResolver($gateway);
 
@@ -115,8 +115,8 @@ final class CampaignAudienceResolverTest extends TestCase
         $this->assertSame('free@example.com', $freeRecipients->first()->email);
 
         $premiumRecipients = $resolver->resolve(MarketingCampaign::SEGMENT_PREMIUM);
-        $this->assertCount(1, $premiumRecipients);
-        $this->assertSame('premium@example.com', $premiumRecipients->first()->email);
+        $this->assertCount(2, $premiumRecipients);
+        $this->assertSame(['premium@example.com', 'pro-sub@example.com'], $premiumRecipients->pluck('email')->all());
     }
 
     public function test_it_resolves_test_recipients_when_is_test_is_true(): void
