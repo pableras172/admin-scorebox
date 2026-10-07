@@ -382,6 +382,39 @@ class MarketingCampaignsTable
                     }),
 
                 ViewAction::make(),
+                Action::make('duplicate')
+                    ->label('Duplicar')
+                    ->icon('heroicon-o-document-duplicate')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->modalHeading('Duplicar Campaña')
+                    ->modalDescription('¿Deseas duplicar esta campaña en un nuevo borrador?')
+                    ->modalSubmitActionLabel('Sí, duplicar')
+                    ->action(function (MarketingCampaign $record): void {
+                        /** @var MarketingCampaign $clone */
+                        $clone = $record->replicate([
+                            'status',
+                            'sent_at',
+                            'scheduled_at',
+                            'recipients_count',
+                            'sent_count',
+                            'failed_count',
+                        ]);
+                        $clone->subject = "{$record->subject} (Copia)";
+                        $clone->status = MarketingCampaign::STATUS_DRAFT;
+                        $clone->sent_at = null;
+                        $clone->scheduled_at = null;
+                        $clone->recipients_count = 0;
+                        $clone->sent_count = 0;
+                        $clone->failed_count = 0;
+                        $clone->save();
+
+                        Notification::make()
+                            ->title('Campaña duplicada')
+                            ->body("Se ha creado una copia en borrador: {$clone->subject}")
+                            ->success()
+                            ->send();
+                    }),
                 EditAction::make()
                     ->visible(fn (MarketingCampaign $record): bool => in_array($record->status, [
                         MarketingCampaign::STATUS_DRAFT,
