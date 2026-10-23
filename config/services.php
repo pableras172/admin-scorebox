@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'scorebox' => [
+        'api_key' => env('SCOREBOX_API_KEY'),
+    ],
+
 ];
