@@ -23,6 +23,7 @@ class ScoreDocumentFactory extends Factory
     {
         return [
             'title' => $this->faker->words(3, true),
+            'sku' => 'score_'.$this->faker->unique()->regexify('[a-z0-9_]{10}'),
             'composer' => $this->faker->name(),
             'instrument' => $this->faker->randomElement(['Clarinete', 'Piano', 'Saxofón Alto', 'Trompeta', 'Flauta']),
             'genre' => $this->faker->randomElement(['Clásica', 'Banda / Marchas', 'Pasodoble', 'Jazz']),

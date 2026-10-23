@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property int $id
  * @property string $title
+ * @property string|null $sku
  * @property string|null $composer
  * @property string|null $instrument
  * @property string|null $genre
@@ -47,6 +48,7 @@ class ScoreDocument extends Model
      */
     protected $fillable = [
         'title',
+        'sku',
         'composer',
         'instrument',
         'genre',

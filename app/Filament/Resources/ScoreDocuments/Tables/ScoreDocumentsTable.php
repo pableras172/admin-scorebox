@@ -31,6 +31,15 @@ class ScoreDocumentsTable
                     ->weight('bold')
                     ->description(fn (ScoreDocument $record): ?string => $record->composer),
 
+                TextColumn::make('sku')
+                    ->label('SKU')
+                    ->searchable()
+                    ->color('gray')
+                    ->placeholder('-')
+                    ->copyable()
+                    ->copyMessage('SKU copiado')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('musicGenre.name')
                     ->label('Género')
                     ->badge()

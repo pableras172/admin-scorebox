@@ -38,6 +38,7 @@ Obtiene una lista paginada y filtrable de las obras actualmente publicadas y vig
 | Parámetro | Tipo | Por defecto | Descripción |
 | :--- | :--- | :---: | :--- |
 | `search` | `string` | - | Búsqueda parcial de texto en título, compositor, instrumento, género o agrupación. |
+| `sku` | `string` | - | Filtro exacto por SKU / Product ID de Google Play Store (ej. `score_canon_in_d`). |
 | `music_genre_id`| `int` | - | Filtro exacto por ID de género musical. |
 | `genre` | `string` | - | Filtro por slug o nombre de género musical (ej: `pasodoble`, `marcha-procesional`). |
 | `band_type_id` | `int` | - | Filtro exacto por ID de tipo de banda / agrupación. |
@@ -66,6 +67,7 @@ Accept: application/json
     {
       "id": 1,
       "title": "Amparito Roca",
+      "sku": "score_amparito_roca",
       "composer": "Jaime Texidor",
       "instrument": "Partitura Completa / Score",
       "genre": "Pasodoble",
@@ -125,6 +127,7 @@ Accept: application/json
   "data": {
     "id": 1,
     "title": "Amparito Roca",
+    "sku": "score_amparito_roca",
     "composer": "Jaime Texidor",
     "instrument": "Partitura Completa / Score",
     "genre": "Pasodoble",
@@ -327,6 +330,7 @@ data class CategoryItemDto(
 data class ScoreDocumentDto(
     @SerializedName("id") val id: Long,
     @SerializedName("title") val title: String,
+    @SerializedName("sku") val sku: String?,
     @SerializedName("composer") val composer: String?,
     @SerializedName("instrument") val instrument: String?,
     @SerializedName("genre") val genre: String?,
@@ -375,6 +379,7 @@ interface ScoreBoxCatalogApi {
     suspend fun getScores(
         @Header("X-ScoreBox-Api-Key") apiKey: String,
         @Query("search") search: String? = null,
+        @Query("sku") sku: String? = null,
         @Query("genre") genreSlug: String? = null,
         @Query("music_genre_id") musicGenreId: Long? = null,
         @Query("band_type") bandTypeSlug: String? = null,

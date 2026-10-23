@@ -28,12 +28,17 @@ class ScoreDocumentApiController extends Controller
             $search = trim((string) $request->query('search'));
             $query->where(function (Builder $q) use ($search): void {
                 $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%")
                     ->orWhere('composer', 'like', "%{$search}%")
                     ->orWhere('instrument', 'like', "%{$search}%")
                     ->orWhere('genre', 'like', "%{$search}%")
                     ->orWhereHas('musicGenre', fn (Builder $g): Builder => $g->where('name', 'like', "%{$search}%"))
                     ->orWhereHas('bandType', fn (Builder $b): Builder => $b->where('name', 'like', "%{$search}%"));
             });
+        }
+
+        if ($request->filled('sku')) {
+            $query->where('sku', trim((string) $request->query('sku')));
         }
 
         if ($request->filled('music_genre_id')) {
@@ -205,6 +210,7 @@ class ScoreDocumentApiController extends Controller
         return [
             'id' => $score->id,
             'title' => $score->title,
+            'sku' => $score->sku,
             'composer' => $score->composer,
             'instrument' => $score->instrument,
             'genre' => $score->musicGenre?->name ?? $score->genre,

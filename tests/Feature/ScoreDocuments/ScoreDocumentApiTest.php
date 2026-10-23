@@ -275,4 +275,25 @@ final class ScoreDocumentApiTest extends TestCase
         $successResponse->assertStatus(200);
         $this->assertSame(1, $score->fresh()->downloads_count);
     }
+
+    public function test_it_filters_and_returns_scores_by_google_play_sku(): void
+    {
+        $scoreWithSku = ScoreDocument::factory()->create([
+            'title' => 'Partitura con SKU',
+            'sku' => 'score_play_store_001',
+        ]);
+        ScoreDocument::factory()->create([
+            'title' => 'Otra Partitura',
+            'sku' => 'score_other_002',
+        ]);
+
+        $response = $this->getJson('/api/v1/scores?sku=score_play_store_001', [
+            'X-ScoreBox-Api-Key' => 'test-secret-key-123',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonCount(1, 'data');
+        $this->assertSame('score_play_store_001', $response->json('data.0.sku'));
+        $this->assertSame($scoreWithSku->id, $response->json('data.0.id'));
+    }
 }

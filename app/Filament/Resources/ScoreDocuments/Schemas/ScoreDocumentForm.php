@@ -58,6 +58,13 @@ class ScoreDocumentForm
                             ->required()
                             ->maxLength(255),
 
+                        TextInput::make('sku')
+                            ->label('SKU / ID Producto Google Play')
+                            ->placeholder('Ej: score_canon_in_d o score_001')
+                            ->helperText('Identificador único para compras in-app en Google Play Store (opcional).')
+                            ->maxLength(100)
+                            ->unique(ignoreRecord: true),
+
                         TextInput::make('composer')
                             ->label('Compositor / Arreglista')
                             ->placeholder('Ej: Johann Pachelbel, Abel Moreno, Joaquín Rodrigo...')
