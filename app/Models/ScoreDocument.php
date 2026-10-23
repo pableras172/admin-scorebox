@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Database\Factories\ScoreDocumentFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property int $id
@@ -17,6 +17,8 @@ use Illuminate\Support\Carbon;
  * @property string|null $composer
  * @property string|null $instrument
  * @property string|null $genre
+ * @property int|null $music_genre_id
+ * @property int|null $band_type_id
  * @property string|null $difficulty
  * @property string|null $description
  * @property string $file_path
@@ -25,10 +27,15 @@ use Illuminate\Support\Carbon;
  * @property string $mime_type
  * @property bool $is_active
  * @property bool $is_premium_only
+ * @property string|null $price
+ * @property CarbonInterface|null $published_at
+ * @property CarbonInterface|null $publication_end_at
  * @property int $downloads_count
- * @property CarbonImmutable|Carbon|null $created_at
- * @property CarbonImmutable|Carbon|null $updated_at
+ * @property CarbonInterface|null $created_at
+ * @property CarbonInterface|null $updated_at
  * @property-read string $formatted_file_size
+ * @property-read MusicGenre|null $musicGenre
+ * @property-read BandType|null $bandType
  */
 class ScoreDocument extends Model
 {
@@ -43,6 +50,8 @@ class ScoreDocument extends Model
         'composer',
         'instrument',
         'genre',
+        'music_genre_id',
+        'band_type_id',
         'difficulty',
         'description',
         'file_path',
@@ -51,6 +60,9 @@ class ScoreDocument extends Model
         'mime_type',
         'is_active',
         'is_premium_only',
+        'price',
+        'published_at',
+        'publication_end_at',
         'downloads_count',
     ];
 
@@ -73,9 +85,30 @@ class ScoreDocument extends Model
         return [
             'is_active' => 'boolean',
             'is_premium_only' => 'boolean',
+            'price' => 'decimal:2',
+            'published_at' => 'datetime',
+            'publication_end_at' => 'datetime',
+            'music_genre_id' => 'integer',
+            'band_type_id' => 'integer',
             'file_size' => 'integer',
             'downloads_count' => 'integer',
         ];
+    }
+
+    /**
+     * @return BelongsTo<MusicGenre, $this>
+     */
+    public function musicGenre(): BelongsTo
+    {
+        return $this->belongsTo(MusicGenre::class, 'music_genre_id');
+    }
+
+    /**
+     * @return BelongsTo<BandType, $this>
+     */
+    public function bandType(): BelongsTo
+    {
+        return $this->belongsTo(BandType::class, 'band_type_id');
     }
 
     /**
@@ -85,6 +118,25 @@ class ScoreDocument extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope to only include currently published scores according to publication dates.
+     *
+     * @param  Builder<ScoreDocument>  $query
+     * @return Builder<ScoreDocument>
+     */
+    public function scopePublished(Builder $query): Builder
+    {
+        return $query->where('is_active', true)
+            ->where(function (Builder $q): void {
+                $q->whereNull('published_at')
+                    ->orWhere('published_at', '<=', now());
+            })
+            ->where(function (Builder $q): void {
+                $q->whereNull('publication_end_at')
+                    ->orWhere('publication_end_at', '>=', now());
+            });
     }
 
     /**

@@ -15,7 +15,7 @@ Guía técnica de integración para clientes móviles (App Android / iOS) y desa
 
 ## 2. Autenticación y Cabeceras Globales
 
-Todas las llamadas a `/scores` deben autenticarse mediante la clave de API del ecosistema ScoreBox.
+Todas las llamadas a `/scores`, `/genres` y `/band-types` deben autenticarse mediante la clave de API del ecosistema ScoreBox.
 
 ### Cabeceras HTTP Requeridas:
 
@@ -31,25 +31,28 @@ Todas las llamadas a `/scores` deben autenticarse mediante la clave de API del e
 
 ### 3.1. Listar Catálogo de Partituras (`GET /scores`)
 
-Obtiene una lista paginada y filtrable de las obras publicadas y activas.
+Obtiene una lista paginada y filtrable de las obras actualmente publicadas y vigentes (respetando fechas de inicio y fin de publicación).
 
 #### Parámetros de consulta (Query Params):
 
 | Parámetro | Tipo | Por defecto | Descripción |
 | :--- | :--- | :---: | :--- |
-| `search` | `string` | - | Búsqueda parcial de texto en título, compositor, instrumento o género. |
-| `instrument` | `string` | - | Filtro por instrumento o agrupación (ej. `Clarinete`, `Piano`, `Banda`). |
-| `genre` | `string` | - | Filtro por género/estilo (ej. `Marcha`, `Clásica`, `Pasodoble`). |
+| `search` | `string` | - | Búsqueda parcial de texto en título, compositor, instrumento, género o agrupación. |
+| `music_genre_id`| `int` | - | Filtro exacto por ID de género musical. |
+| `genre` | `string` | - | Filtro por slug o nombre de género musical (ej: `pasodoble`, `marcha-procesional`). |
+| `band_type_id` | `int` | - | Filtro exacto por ID de tipo de banda / agrupación. |
+| `band_type` | `string` | - | Filtro por slug o nombre de tipo de banda (ej: `banda-de-musica`, `charanga`). |
+| `instrument` | `string` | - | Filtro por instrumento o papel específico (ej. `Clarinete 1º`, `Piano`, `Guion`). |
 | `difficulty` | `string` | - | Nivel de dificultad: `easy` (fácil), `medium` (intermedio), `hard` (avanzado). |
 | `is_premium_only` | `boolean` | - | `true` para ver solo exclusivas PRO; `false` para ver solo libres/gratuitas. |
-| `sort_by` | `string` | `id` | Campo de ordenación: `id`, `title`, `composer`, `downloads_count`, `file_size`. |
+| `sort_by` | `string` | `id` | Campo de ordenación: `id`, `title`, `composer`, `downloads_count`, `file_size`, `price`, `published_at`. |
 | `order` | `string` | `desc` | Dirección del orden: `asc` o `desc`. |
 | `per_page` | `integer`| `20` | Cantidad de registros por página (mínimo 1, máximo 100). |
 | `page` | `integer`| `1` | Número de página solicitada. |
 
 #### Ejemplo de Petición:
 ```http
-GET /api/v1/scores?instrument=Clarinete&search=Bach&page=1 HTTP/1.1
+GET /api/v1/scores?genre=pasodoble&band_type=banda-de-musica&page=1 HTTP/1.1
 Host: admin.scorebox.pro
 X-ScoreBox-Api-Key: TU_API_KEY_AQUI
 Accept: application/json
@@ -62,18 +65,31 @@ Accept: application/json
   "data": [
     {
       "id": 1,
-      "title": "Canon en Re Mayor",
-      "composer": "Johann Pachelbel",
-      "instrument": "Clarinete en Sib",
-      "genre": "Clásica",
+      "title": "Amparito Roca",
+      "composer": "Jaime Texidor",
+      "instrument": "Partitura Completa / Score",
+      "genre": "Pasodoble",
+      "music_genre": {
+        "id": 2,
+        "name": "Pasodoble",
+        "slug": "pasodoble"
+      },
+      "band_type": {
+        "id": 1,
+        "name": "Banda de Música",
+        "slug": "banda-de-musica"
+      },
       "difficulty": "medium",
-      "description": "Arreglo para clarinete solista con acompañamiento.",
-      "file_name": "canon_in_d_clarinet.pdf",
+      "description": "Pasodoble clásico de concierto y desfile.",
+      "price": "0.00",
+      "file_name": "amparito_roca_score.pdf",
       "file_size": 245760,
       "formatted_file_size": "240 KB",
       "mime_type": "application/pdf",
       "is_premium_only": false,
-      "downloads_count": 42,
+      "published_at": "2026-10-01T00:00:00+02:00",
+      "publication_end_at": null,
+      "downloads_count": 87,
       "download_url": "https://admin.scorebox.pro/api/v1/scores/1/download",
       "created_at": "2026-10-23T10:35:00+02:00",
       "updated_at": "2026-10-23T10:35:00+02:00"
@@ -92,7 +108,7 @@ Accept: application/json
 
 ### 3.2. Detalle de una Partitura (`GET /scores/{id}`)
 
-Devuelve la información técnica y metadatos de una partitura en concreto.
+Devuelve la información técnica y metadatos completos de una partitura en concreto.
 
 #### Ejemplo de Petición:
 ```http
@@ -108,18 +124,31 @@ Accept: application/json
   "success": true,
   "data": {
     "id": 1,
-    "title": "Canon en Re Mayor",
-    "composer": "Johann Pachelbel",
-    "instrument": "Clarinete en Sib",
-    "genre": "Clásica",
+    "title": "Amparito Roca",
+    "composer": "Jaime Texidor",
+    "instrument": "Partitura Completa / Score",
+    "genre": "Pasodoble",
+    "music_genre": {
+      "id": 2,
+      "name": "Pasodoble",
+      "slug": "pasodoble"
+    },
+    "band_type": {
+      "id": 1,
+      "name": "Banda de Música",
+      "slug": "banda-de-musica"
+    },
     "difficulty": "medium",
-    "description": "Arreglo para clarinete solista con acompañamiento.",
-    "file_name": "canon_in_d_clarinet.pdf",
+    "description": "Pasodoble clásico de concierto y desfile.",
+    "price": "0.00",
+    "file_name": "amparito_roca_score.pdf",
     "file_size": 245760,
     "formatted_file_size": "240 KB",
     "mime_type": "application/pdf",
     "is_premium_only": false,
-    "downloads_count": 42,
+    "published_at": "2026-10-01T00:00:00+02:00",
+    "publication_end_at": null,
+    "downloads_count": 87,
     "download_url": "https://admin.scorebox.pro/api/v1/scores/1/download",
     "created_at": "2026-10-23T10:35:00+02:00",
     "updated_at": "2026-10-23T10:35:00+02:00"
@@ -134,7 +163,7 @@ Accept: application/json
 Inicia la descarga directa y segura en streaming del archivo físico (PDF, MusicXML, ZIP, audio, etc.).
 
 * **Comportamiento del Servidor:**
-  1. Verifica que la obra exista y esté en estado `is_active: true`.
+  1. Verifica que la obra exista y esté vigente (`is_active: true`, `published_at <= now()`, `publication_end_at >= now()`).
   2. Si `is_premium_only: true`, comprueba la cabecera `X-User-Is-Premium: true`. Si el valor es `false`, deniega la descarga con `403 Forbidden`.
   3. Verifica la existencia física del archivo en el almacenamiento privado del servidor.
   4. Incrementa automáticamente el contador `downloads_count` en la base de datos.
@@ -151,9 +180,91 @@ X-User-Is-Premium: true
 #### Respuesta Exitosa (`200 OK`):
 * **Cabeceras devueltas:**
   * `Content-Type: application/pdf` (o el MIME type correspondiente).
-  * `Content-Disposition: attachment; filename="canon_in_d_clarinet.pdf"`
+  * `Content-Disposition: attachment; filename="amparito_roca_score.pdf"`
   * `Cache-Control: no-cache, must-revalidate`
 * **Cuerpo:** Bytes en streaming del archivo.
+
+---
+
+### 3.4. Listar Géneros Musicales (`GET /genres`)
+
+Devuelve todos los géneros musicales activos configurados en el panel para rellenar filtros o pestañas en la app.
+
+#### Ejemplo de Petición:
+```http
+GET /api/v1/genres HTTP/1.1
+Host: admin.scorebox.pro
+X-ScoreBox-Api-Key: TU_API_KEY_AQUI
+Accept: application/json
+```
+
+#### Respuesta Exitosa (`200 OK`):
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Marcha Procesional",
+      "slug": "marcha-procesional",
+      "description": "Marchas fúnebres, solemnes y de gloria para procesiones."
+    },
+    {
+      "id": 2,
+      "name": "Pasodoble",
+      "slug": "pasodoble",
+      "description": "Pasodobles de concierto, taurinos y de fiesta."
+    },
+    {
+      "id": 3,
+      "name": "Banda Sonora",
+      "slug": "banda-sonora",
+      "description": "Música de cine, televisión y bandas sonoras originales."
+    }
+  ]
+}
+```
+
+---
+
+### 3.5. Listar Tipos de Banda / Agrupaciones (`GET /band-types`)
+
+Devuelve todos los tipos de agrupación musical configurados en el panel (Banda de Música, Charanga, Orquesta Sinfónica, etc.).
+
+#### Ejemplo de Petición:
+```http
+GET /api/v1/band-types HTTP/1.1
+Host: admin.scorebox.pro
+X-ScoreBox-Api-Key: TU_API_KEY_AQUI
+Accept: application/json
+```
+
+#### Respuesta Exitosa (`200 OK`):
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Banda de Música",
+      "slug": "banda-de-musica",
+      "description": "Banda de plantilla tradicional con maderas, metales y percusión."
+    },
+    {
+      "id": 2,
+      "name": "Charanga / Fanfarria",
+      "slug": "charanga-fanfarria",
+      "description": "Agrupación reducida y festiva de calle con metales, saxos y percusión."
+    },
+    {
+      "id": 3,
+      "name": "Orquesta Sinfónica",
+      "slug": "orquesta-sinfonica",
+      "description": "Orquesta completa con cuerda, viento y percusión."
+    }
+  ]
+}
+```
 
 ---
 
@@ -164,7 +275,7 @@ X-User-Is-Premium: true
 | `200 OK` | Correcto | Operación completada con éxito. |
 | `401 Unauthorized` | No Autorizado | No se envió la cabecera `X-ScoreBox-Api-Key` o la clave es incorrecta. |
 | `403 Forbidden` | Prohibido | La obra es exclusiva para usuarios PRO (`is_premium_only: true`) y el cliente envió `X-User-Is-Premium: false`. |
-| `404 Not Found` | No Encontrado | El ID no existe, la obra está desactivada en el panel o el archivo físico no existe en disco. |
+| `404 Not Found` | No Encontrado | El ID no existe, la obra está inactiva/fuera de fechas o el archivo físico no existe en disco. |
 | `429 Too Many Requests` | Límite Superado | Se superó el umbral de 60 peticiones en 1 minuto. |
 
 #### Estructura Estándar de Respuesta de Error (JSON):
@@ -196,19 +307,41 @@ data class ScoreDetailResponse(
     @SerializedName("data") val data: ScoreDocumentDto
 )
 
+data class MusicGenresResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("data") val data: List<CategoryItemDto>
+)
+
+data class BandTypesResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("data") val data: List<CategoryItemDto>
+)
+
+data class CategoryItemDto(
+    @SerializedName("id") val id: Long,
+    @SerializedName("name") val name: String,
+    @SerializedName("slug") val slug: String,
+    @SerializedName("description") val description: String?
+)
+
 data class ScoreDocumentDto(
     @SerializedName("id") val id: Long,
     @SerializedName("title") val title: String,
     @SerializedName("composer") val composer: String?,
     @SerializedName("instrument") val instrument: String?,
     @SerializedName("genre") val genre: String?,
+    @SerializedName("music_genre") val musicGenre: CategoryItemDto?,
+    @SerializedName("band_type") val bandType: CategoryItemDto?,
     @SerializedName("difficulty") val difficulty: String?,
     @SerializedName("description") val description: String?,
+    @SerializedName("price") val price: String?,
     @SerializedName("file_name") val fileName: String,
     @SerializedName("file_size") val fileSize: Long,
     @SerializedName("formatted_file_size") val formattedFileSize: String,
     @SerializedName("mime_type") val mimeType: String,
     @SerializedName("is_premium_only") val isPremiumOnly: Boolean,
+    @SerializedName("published_at") val publishedAt: String?,
+    @SerializedName("publication_end_at") val publicationEndAt: String?,
     @SerializedName("downloads_count") val downloadsCount: Int,
     @SerializedName("download_url") val downloadUrl: String,
     @SerializedName("created_at") val createdAt: String?,
@@ -227,8 +360,7 @@ data class PaginationMetaDto(
 ```kotlin
 package com.scorebox.app.data.api
 
-import com.scorebox.app.data.api.model.ScoreCatalogResponse
-import com.scorebox.app.data.api.model.ScoreDetailResponse
+import com.scorebox.app.data.api.model.*
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.GET
@@ -243,8 +375,11 @@ interface ScoreBoxCatalogApi {
     suspend fun getScores(
         @Header("X-ScoreBox-Api-Key") apiKey: String,
         @Query("search") search: String? = null,
+        @Query("genre") genreSlug: String? = null,
+        @Query("music_genre_id") musicGenreId: Long? = null,
+        @Query("band_type") bandTypeSlug: String? = null,
+        @Query("band_type_id") bandTypeId: Long? = null,
         @Query("instrument") instrument: String? = null,
-        @Query("genre") genre: String? = null,
         @Query("difficulty") difficulty: String? = null,
         @Query("is_premium_only") isPremiumOnly: Boolean? = null,
         @Query("sort_by") sortBy: String? = null,
@@ -258,6 +393,16 @@ interface ScoreBoxCatalogApi {
         @Header("X-ScoreBox-Api-Key") apiKey: String,
         @Path("id") scoreId: Long
     ): Response<ScoreDetailResponse>
+
+    @GET("genres")
+    suspend fun getGenres(
+        @Header("X-ScoreBox-Api-Key") apiKey: String
+    ): Response<MusicGenresResponse>
+
+    @GET("band-types")
+    suspend fun getBandTypes(
+        @Header("X-ScoreBox-Api-Key") apiKey: String
+    ): Response<BandTypesResponse>
 
     @Streaming
     @GET("scores/{id}/download")
@@ -314,6 +459,13 @@ Para cualquier ajuste en el backend del panel de administración:
 * **Rutas API:** [`routes/api.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/routes/api.php)
 * **Controlador:** [`app/Http/Controllers/Api/ScoreDocumentApiController.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/app/Http/Controllers/Api/ScoreDocumentApiController.php)
 * **Middleware de API Key:** [`app/Http/Middleware/ValidateScoreBoxApiKey.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/app/Http/Middleware/ValidateScoreBoxApiKey.php)
-* **Modelo Eloquent:** [`app/Models/ScoreDocument.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/app/Models/ScoreDocument.php)
-* **Recurso Filament Admin:** [`app/Filament/Resources/ScoreDocuments/ScoreDocumentResource.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/app/Filament/Resources/ScoreDocuments/ScoreDocumentResource.php)
+* **Modelos Eloquent:** 
+  * [`app/Models/ScoreDocument.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/app/Models/ScoreDocument.php)
+  * [`app/Models/MusicGenre.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/app/Models/MusicGenre.php)
+  * [`app/Models/BandType.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/app/Models/BandType.php)
+* **Recursos Filament Admin:** 
+  * [`app/Filament/Resources/ScoreDocuments/ScoreDocumentResource.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/app/Filament/Resources/ScoreDocuments/ScoreDocumentResource.php)
+  * [`app/Filament/Resources/MusicGenres/MusicGenreResource.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/app/Filament/Resources/MusicGenres/MusicGenreResource.php)
+  * [`app/Filament/Resources/BandTypes/BandTypeResource.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/app/Filament/Resources/BandTypes/BandTypeResource.php)
+* **Seeder Inicial:** [`database/seeders/MusicGenreAndBandTypeSeeder.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/database/seeders/MusicGenreAndBandTypeSeeder.php)
 * **Suite de Pruebas:** [`tests/Feature/ScoreDocuments/ScoreDocumentApiTest.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/tests/Feature/ScoreDocuments/ScoreDocumentApiTest.php)

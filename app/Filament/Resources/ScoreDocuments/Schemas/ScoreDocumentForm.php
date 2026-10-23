@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\ScoreDocuments\Schemas;
 
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -62,14 +63,39 @@ class ScoreDocumentForm
                             ->placeholder('Ej: Johann Pachelbel, Abel Moreno, Joaquín Rodrigo...')
                             ->maxLength(255),
 
-                        TextInput::make('instrument')
-                            ->label('Instrumento o Agrupación')
-                            ->placeholder('Ej: Piano, Clarinete en Sib, Banda Sinfónica, Guitarra, Voz...')
-                            ->maxLength(255),
+                        Select::make('music_genre_id')
+                            ->label('Género Musical')
+                            ->relationship('musicGenre', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->createOptionForm([
+                                TextInput::make('name')
+                                    ->label('Nombre del Género')
+                                    ->required()
+                                    ->maxLength(255),
+                                Textarea::make('description')
+                                    ->label('Descripción')
+                                    ->rows(2),
+                            ]),
 
-                        TextInput::make('genre')
-                            ->label('Género o Estilo')
-                            ->placeholder('Ej: Marcha Procesional, Clásica, Pasodoble, Banda Sonora, Flamenco...')
+                        Select::make('band_type_id')
+                            ->label('Tipo de Banda / Agrupación')
+                            ->relationship('bandType', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->createOptionForm([
+                                TextInput::make('name')
+                                    ->label('Tipo de Agrupación')
+                                    ->required()
+                                    ->maxLength(255),
+                                Textarea::make('description')
+                                    ->label('Descripción')
+                                    ->rows(2),
+                            ]),
+
+                        TextInput::make('instrument')
+                            ->label('Instrumentación / Papel')
+                            ->placeholder('Ej: Clarinete 1º, Guion General, Cuarteto de Saxofones...')
                             ->maxLength(255),
 
                         Select::make('difficulty')
@@ -90,8 +116,8 @@ class ScoreDocumentForm
                     ])
                     ->columns(2),
 
-                Section::make('Control de Publicación y Acceso')
-                    ->description('Configura la visibilidad en el catálogo y los permisos requeridos para su descarga.')
+                Section::make('Control de Publicación y Condiciones')
+                    ->description('Configura la visibilidad en el catálogo, fechas de programación y condiciones económicas.')
                     ->schema([
                         Toggle::make('is_active')
                             ->label('Publicado y disponible en la App')
@@ -102,6 +128,25 @@ class ScoreDocumentForm
                             ->label('Exclusivo para usuarios PRO')
                             ->helperText('Si se marca, solo los usuarios con suscripción PRO activa tendrán permiso para descargar el archivo.')
                             ->default(false),
+
+                        TextInput::make('price')
+                            ->label('Precio (€)')
+                            ->numeric()
+                            ->prefix('€')
+                            ->placeholder('0.00')
+                            ->helperText('Opcional. Reservado para venta o suscripciones especiales.'),
+
+                        DateTimePicker::make('published_at')
+                            ->label('Fecha Inicio Publicación')
+                            ->native(false)
+                            ->seconds(false)
+                            ->helperText('Si se programa para el futuro, no estará visible hasta esa fecha.'),
+
+                        DateTimePicker::make('publication_end_at')
+                            ->label('Fecha Fin Publicación')
+                            ->native(false)
+                            ->seconds(false)
+                            ->helperText('Opcional. Pasada esta fecha, la obra se ocultará automáticamente.'),
                     ])
                     ->columns(2),
             ]);

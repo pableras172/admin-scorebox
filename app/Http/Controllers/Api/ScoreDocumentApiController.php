@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\BandType;
+use App\Models\MusicGenre;
 use App\Models\ScoreDocument;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +22,7 @@ class ScoreDocumentApiController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = ScoreDocument::query()->active();
+        $query = ScoreDocument::query()->published()->with(['musicGenre', 'bandType']);
 
         if ($request->filled('search')) {
             $search = trim((string) $request->query('search'));
@@ -28,18 +30,32 @@ class ScoreDocumentApiController extends Controller
                 $q->where('title', 'like', "%{$search}%")
                     ->orWhere('composer', 'like', "%{$search}%")
                     ->orWhere('instrument', 'like', "%{$search}%")
-                    ->orWhere('genre', 'like', "%{$search}%");
+                    ->orWhere('genre', 'like', "%{$search}%")
+                    ->orWhereHas('musicGenre', fn (Builder $g): Builder => $g->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('bandType', fn (Builder $b): Builder => $b->where('name', 'like', "%{$search}%"));
             });
+        }
+
+        if ($request->filled('music_genre_id')) {
+            $query->where('music_genre_id', (int) $request->query('music_genre_id'));
+        } elseif ($request->filled('genre')) {
+            $genre = trim((string) $request->query('genre'));
+            $query->where(function (Builder $q) use ($genre): void {
+                $q->where('genre', 'like', "%{$genre}%")
+                    ->orWhereHas('musicGenre', fn (Builder $g): Builder => $g->where('slug', $genre)->orWhere('name', 'like', "%{$genre}%"));
+            });
+        }
+
+        if ($request->filled('band_type_id')) {
+            $query->where('band_type_id', (int) $request->query('band_type_id'));
+        } elseif ($request->filled('band_type')) {
+            $bandType = trim((string) $request->query('band_type'));
+            $query->whereHas('bandType', fn (Builder $b): Builder => $b->where('slug', $bandType)->orWhere('name', 'like', "%{$bandType}%"));
         }
 
         if ($request->filled('instrument')) {
             $instrument = trim((string) $request->query('instrument'));
             $query->where('instrument', 'like', "%{$instrument}%");
-        }
-
-        if ($request->filled('genre')) {
-            $genre = trim((string) $request->query('genre'));
-            $query->where('genre', 'like', "%{$genre}%");
         }
 
         if ($request->filled('difficulty')) {
@@ -58,6 +74,8 @@ class ScoreDocumentApiController extends Controller
             'composer' => 'composer',
             'downloads_count' => 'downloads_count',
             'file_size' => 'file_size',
+            'price' => 'price',
+            'published_at' => 'published_at',
             default => 'id',
         };
 
@@ -86,7 +104,7 @@ class ScoreDocumentApiController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $score = ScoreDocument::query()->active()->find($id);
+        $score = ScoreDocument::query()->published()->with(['musicGenre', 'bandType'])->find($id);
 
         if (! $score) {
             return response()->json([
@@ -106,12 +124,12 @@ class ScoreDocumentApiController extends Controller
      */
     public function download(Request $request, int $id): StreamedResponse|JsonResponse
     {
-        $score = ScoreDocument::query()->active()->find($id);
+        $score = ScoreDocument::query()->published()->find($id);
 
         if (! $score) {
             return response()->json([
                 'success' => false,
-                'message' => 'Documento o partitura no encontrado o inactivo.',
+                'message' => 'Documento o partitura no encontrado o no disponible.',
             ], Response::HTTP_NOT_FOUND);
         }
 
@@ -148,6 +166,38 @@ class ScoreDocumentApiController extends Controller
     }
 
     /**
+     * List all active music genres for filtering in client apps.
+     */
+    public function genres(): JsonResponse
+    {
+        $genres = MusicGenre::query()
+            ->active()
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug', 'description']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $genres,
+        ]);
+    }
+
+    /**
+     * List all active band types / formations for filtering in client apps.
+     */
+    public function bandTypes(): JsonResponse
+    {
+        $types = BandType::query()
+            ->active()
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug', 'description']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $types,
+        ]);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function transformScoreDocument(ScoreDocument $score): array
@@ -157,14 +207,27 @@ class ScoreDocumentApiController extends Controller
             'title' => $score->title,
             'composer' => $score->composer,
             'instrument' => $score->instrument,
-            'genre' => $score->genre,
+            'genre' => $score->musicGenre?->name ?? $score->genre,
+            'music_genre' => $score->musicGenre ? [
+                'id' => $score->musicGenre->id,
+                'name' => $score->musicGenre->name,
+                'slug' => $score->musicGenre->slug,
+            ] : null,
+            'band_type' => $score->bandType ? [
+                'id' => $score->bandType->id,
+                'name' => $score->bandType->name,
+                'slug' => $score->bandType->slug,
+            ] : null,
             'difficulty' => $score->difficulty,
             'description' => $score->description,
+            'price' => $score->price,
             'file_name' => $score->file_name,
             'file_size' => $score->file_size,
             'formatted_file_size' => $score->formatted_file_size,
             'mime_type' => $score->mime_type,
             'is_premium_only' => $score->is_premium_only,
+            'published_at' => $score->published_at?->toIso8601String(),
+            'publication_end_at' => $score->publication_end_at?->toIso8601String(),
             'downloads_count' => $score->downloads_count,
             'download_url' => route('api.scores.download', ['id' => $score->id]),
             'created_at' => $score->created_at?->toIso8601String(),

@@ -31,19 +31,31 @@ class ScoreDocumentsTable
                     ->weight('bold')
                     ->description(fn (ScoreDocument $record): ?string => $record->composer),
 
-                TextColumn::make('instrument')
-                    ->label('Instrumento')
-                    ->searchable()
-                    ->sortable()
+                TextColumn::make('musicGenre.name')
+                    ->label('Género')
+                    ->badge()
+                    ->color('gray')
+                    ->placeholder('-')
+                    ->sortable(),
+
+                TextColumn::make('bandType.name')
+                    ->label('Tipo de Banda')
                     ->badge()
                     ->color('info')
-                    ->placeholder('Todos / General'),
+                    ->placeholder('-')
+                    ->sortable(),
 
-                TextColumn::make('genre')
-                    ->label('Género')
+                TextColumn::make('instrument')
+                    ->label('Instrumentación')
                     ->searchable()
+                    ->placeholder('General')
+                    ->toggleable(),
+
+                TextColumn::make('price')
+                    ->label('Precio')
+                    ->money('EUR')
                     ->sortable()
-                    ->placeholder('-'),
+                    ->placeholder('Gratis'),
 
                 IconColumn::make('is_premium_only')
                     ->label('Solo PRO')
@@ -65,8 +77,20 @@ class ScoreDocumentsTable
                     ->label('Tamaño')
                     ->alignRight(),
 
+                TextColumn::make('published_at')
+                    ->label('Inicio Pub.')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('publication_end_at')
+                    ->label('Fin Pub.')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('created_at')
-                    ->label('Fecha')
+                    ->label('Creado')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -83,6 +107,18 @@ class ScoreDocumentsTable
                     ->placeholder('Todos')
                     ->trueLabel('Solo PRO')
                     ->falseLabel('Gratis / Todos'),
+
+                SelectFilter::make('music_genre_id')
+                    ->label('Género Musical')
+                    ->relationship('musicGenre', 'name')
+                    ->searchable()
+                    ->preload(),
+
+                SelectFilter::make('band_type_id')
+                    ->label('Tipo de Banda')
+                    ->relationship('bandType', 'name')
+                    ->searchable()
+                    ->preload(),
 
                 SelectFilter::make('difficulty')
                     ->label('Dificultad')

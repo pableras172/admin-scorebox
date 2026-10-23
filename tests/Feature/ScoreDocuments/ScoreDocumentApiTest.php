@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\ScoreDocuments;
 
+use App\Models\BandType;
+use App\Models\MusicGenre;
 use App\Models\ScoreDocument;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -99,6 +101,90 @@ final class ScoreDocumentApiTest extends TestCase
         $searchResponse->assertStatus(200);
         $searchResponse->assertJsonCount(1, 'data');
         $this->assertSame('Claro de Luna', $searchResponse->json('data.0.title'));
+    }
+
+    public function test_it_filters_scores_by_genre_and_band_type(): void
+    {
+        $pasodoble = MusicGenre::create(['name' => 'Pasodoble', 'slug' => 'pasodoble']);
+        $banda = BandType::create(['name' => 'Banda de Música', 'slug' => 'banda-de-musica']);
+        $orquesta = BandType::create(['name' => 'Orquesta Sinfónica', 'slug' => 'orquesta-sinfonica']);
+
+        $score1 = ScoreDocument::factory()->create([
+            'title' => 'Amparito Roca',
+            'music_genre_id' => $pasodoble->id,
+            'band_type_id' => $banda->id,
+        ]);
+        $score2 = ScoreDocument::factory()->create([
+            'title' => 'Sinfonía 5',
+            'music_genre_id' => null,
+            'band_type_id' => $orquesta->id,
+        ]);
+
+        // Filter by genre
+        $genreResponse = $this->getJson('/api/v1/scores?genre=pasodoble', [
+            'X-ScoreBox-Api-Key' => 'test-secret-key-123',
+        ]);
+        $genreResponse->assertStatus(200);
+        $genreResponse->assertJsonCount(1, 'data');
+        $this->assertSame($score1->id, $genreResponse->json('data.0.id'));
+
+        // Filter by band_type
+        $bandResponse = $this->getJson('/api/v1/scores?band_type=banda-de-musica', [
+            'X-ScoreBox-Api-Key' => 'test-secret-key-123',
+        ]);
+        $bandResponse->assertStatus(200);
+        $bandResponse->assertJsonCount(1, 'data');
+        $this->assertSame($score1->id, $bandResponse->json('data.0.id'));
+    }
+
+    public function test_it_respects_publication_dates(): void
+    {
+        // Future score (not yet published)
+        ScoreDocument::factory()->create([
+            'title' => 'Obra Futura',
+            'published_at' => now()->addDays(5),
+        ]);
+        // Past expired score
+        ScoreDocument::factory()->create([
+            'title' => 'Obra Caducada',
+            'publication_end_at' => now()->subDay(),
+        ]);
+        // Currently published score
+        $current = ScoreDocument::factory()->create([
+            'title' => 'Obra Publicada Ahora',
+            'published_at' => now()->subDays(2),
+            'publication_end_at' => now()->addDays(10),
+            'price' => '15.50',
+        ]);
+
+        $response = $this->getJson('/api/v1/scores', [
+            'X-ScoreBox-Api-Key' => 'test-secret-key-123',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonCount(1, 'data');
+        $this->assertSame($current->id, $response->json('data.0.id'));
+        $this->assertSame('15.50', $response->json('data.0.price'));
+    }
+
+    public function test_it_returns_genres_and_band_types_lists(): void
+    {
+        MusicGenre::create(['name' => 'Marcha Procesional', 'slug' => 'marcha-procesional']);
+        BandType::create(['name' => 'Charanga', 'slug' => 'charanga']);
+
+        $genreResponse = $this->getJson('/api/v1/genres', [
+            'X-ScoreBox-Api-Key' => 'test-secret-key-123',
+        ]);
+        $genreResponse->assertStatus(200);
+        $genreResponse->assertJson(['success' => true]);
+        $this->assertNotEmpty($genreResponse->json('data'));
+
+        $bandResponse = $this->getJson('/api/v1/band-types', [
+            'X-ScoreBox-Api-Key' => 'test-secret-key-123',
+        ]);
+        $bandResponse->assertStatus(200);
+        $bandResponse->assertJson(['success' => true]);
+        $this->assertNotEmpty($bandResponse->json('data'));
     }
 
     public function test_it_returns_single_score_details(): void
