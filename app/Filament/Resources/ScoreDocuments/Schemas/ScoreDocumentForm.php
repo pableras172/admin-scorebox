@@ -65,9 +65,31 @@ class ScoreDocumentForm
                             ->maxLength(100)
                             ->unique(ignoreRecord: true),
 
+                        Select::make('author_id')
+                            ->label('Autor / Compositor (Ficha)')
+                            ->relationship('author', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->createOptionForm([
+                                TextInput::make('name')
+                                    ->label('Nombre del Autor')
+                                    ->required()
+                                    ->maxLength(255),
+                                TextInput::make('country')
+                                    ->label('País / Nacionalidad')
+                                    ->maxLength(100),
+                                TextInput::make('website_url')
+                                    ->label('Página Web')
+                                    ->url()
+                                    ->maxLength(255),
+                            ])
+                            ->helperText('Vincula la partitura con la ficha oficial del autor (opcional).')
+                            ->nullable(),
+
                         TextInput::make('composer')
-                            ->label('Compositor / Arreglista')
+                            ->label('Compositor / Arreglista (Texto libre)')
                             ->placeholder('Ej: Johann Pachelbel, Abel Moreno, Joaquín Rodrigo...')
+                            ->helperText('Texto libre opcional o cuando se desconozca la ficha.')
                             ->maxLength(255),
 
                         Select::make('music_genre_id')

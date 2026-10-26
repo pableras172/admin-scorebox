@@ -18,5 +18,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/scores/{id}/download', [ScoreDocumentApiController::class, 'download'])->name('api.scores.download');
         Route::get('/genres', [ScoreDocumentApiController::class, 'genres'])->name('api.scores.genres');
         Route::get('/band-types', [ScoreDocumentApiController::class, 'bandTypes'])->name('api.scores.band-types');
+        Route::get('/authors', [ScoreDocumentApiController::class, 'authors'])->name('api.scores.authors');
+        Route::get('/authors/{id}', [ScoreDocumentApiController::class, 'authorDetail'])->name('api.scores.author-detail');
     });
 });

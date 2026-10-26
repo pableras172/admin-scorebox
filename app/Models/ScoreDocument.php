@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property string $title
  * @property string|null $sku
+ * @property int|null $author_id
  * @property string|null $composer
  * @property string|null $instrument
  * @property string|null $genre
@@ -35,6 +36,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonInterface|null $created_at
  * @property CarbonInterface|null $updated_at
  * @property-read string $formatted_file_size
+ * @property-read Author|null $author
  * @property-read MusicGenre|null $musicGenre
  * @property-read BandType|null $bandType
  */
@@ -49,6 +51,7 @@ class ScoreDocument extends Model
     protected $fillable = [
         'title',
         'sku',
+        'author_id',
         'composer',
         'instrument',
         'genre',
@@ -90,11 +93,20 @@ class ScoreDocument extends Model
             'price' => 'decimal:2',
             'published_at' => 'datetime',
             'publication_end_at' => 'datetime',
+            'author_id' => 'integer',
             'music_genre_id' => 'integer',
             'band_type_id' => 'integer',
             'file_size' => 'integer',
             'downloads_count' => 'integer',
         ];
+    }
+
+    /**
+     * @return BelongsTo<Author, $this>
+     */
+    public function author(): BelongsTo
+    {
+        return $this->belongsTo(Author::class, 'author_id');
     }
 
     /**

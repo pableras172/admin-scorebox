@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\ScoreDocuments;
 
+use App\Models\Author;
 use App\Models\BandType;
 use App\Models\MusicGenre;
 use App\Models\ScoreDocument;
@@ -295,5 +296,126 @@ final class ScoreDocumentApiTest extends TestCase
         $response->assertJsonCount(1, 'data');
         $this->assertSame('score_play_store_001', $response->json('data.0.sku'));
         $this->assertSame($scoreWithSku->id, $response->json('data.0.id'));
+    }
+
+    public function test_it_includes_author_relation_and_composer_fallback_in_score_endpoints(): void
+    {
+        $author = Author::factory()->create([
+            'name' => 'Manuel de Falla',
+            'country' => 'España',
+            'birth_year' => 1876,
+            'death_year' => 1946,
+            'website_url' => 'https://manueldefalla.com',
+        ]);
+
+        $scoreWithAuthor = ScoreDocument::factory()->create([
+            'title' => 'El Amor Brujo',
+            'author_id' => $author->id,
+            'composer' => null,
+        ]);
+
+        $scoreWithoutAuthor = ScoreDocument::factory()->create([
+            'title' => 'Obra Popular Tradicional',
+            'author_id' => null,
+            'composer' => 'Tradicional / Anónimo',
+        ]);
+
+        $response = $this->getJson('/api/v1/scores', [
+            'X-ScoreBox-Api-Key' => 'test-secret-key-123',
+        ]);
+
+        $response->assertStatus(200);
+
+        $data = collect($response->json('data'));
+        $fallaItem = $data->firstWhere('id', $scoreWithAuthor->id);
+        $this->assertNotNull($fallaItem);
+        $this->assertSame('Manuel de Falla', $fallaItem['composer']);
+        $this->assertSame($author->id, $fallaItem['author_id']);
+        $this->assertSame('España', $fallaItem['author']['country']);
+        $this->assertSame(1876, $fallaItem['author']['birth_year']);
+
+        $anonItem = $data->firstWhere('id', $scoreWithoutAuthor->id);
+        $this->assertNotNull($anonItem);
+        $this->assertSame('Tradicional / Anónimo', $anonItem['composer']);
+        $this->assertNull($anonItem['author']);
+    }
+
+    public function test_it_filters_scores_by_author_id_and_search(): void
+    {
+        $authorA = Author::factory()->create(['name' => 'Isaac Albéniz', 'slug' => 'isaac-albeniz']);
+        $authorB = Author::factory()->create(['name' => 'Enrique Granados', 'slug' => 'enrique-granados']);
+
+        $scoreA = ScoreDocument::factory()->create([
+            'title' => 'Asturias (Leyenda)',
+            'author_id' => $authorA->id,
+        ]);
+        $scoreB = ScoreDocument::factory()->create([
+            'title' => 'Danzas Españolas',
+            'author_id' => $authorB->id,
+        ]);
+
+        // Filter by author_id
+        $respA = $this->getJson("/api/v1/scores?author_id={$authorA->id}", [
+            'X-ScoreBox-Api-Key' => 'test-secret-key-123',
+        ]);
+        $respA->assertStatus(200);
+        $respA->assertJsonCount(1, 'data');
+        $this->assertSame($scoreA->id, $respA->json('data.0.id'));
+
+        // Search by author name
+        $respSearch = $this->getJson('/api/v1/scores?search=Granados', [
+            'X-ScoreBox-Api-Key' => 'test-secret-key-123',
+        ]);
+        $respSearch->assertStatus(200);
+        $respSearch->assertJsonCount(1, 'data');
+        $this->assertSame($scoreB->id, $respSearch->json('data.0.id'));
+    }
+
+    public function test_it_lists_active_authors_and_retrieves_author_detail_with_scores(): void
+    {
+        $author = Author::factory()->create([
+            'name' => 'Joaquín Rodrigo',
+            'country' => 'España',
+            'is_active' => true,
+        ]);
+
+        $inactiveAuthor = Author::factory()->inactive()->create([
+            'name' => 'Autor No Publicado',
+        ]);
+
+        $score = ScoreDocument::factory()->create([
+            'title' => 'Concierto de Aranjuez',
+            'author_id' => $author->id,
+            'is_active' => true,
+        ]);
+
+        // List authors
+        $listResp = $this->getJson('/api/v1/authors', [
+            'X-ScoreBox-Api-Key' => 'test-secret-key-123',
+        ]);
+        $listResp->assertStatus(200);
+        $authorNames = collect($listResp->json('data'))->pluck('name')->all();
+        $this->assertContains('Joaquín Rodrigo', $authorNames);
+        $this->assertNotContains('Autor No Publicado', $authorNames);
+
+        // Author detail with scores
+        $detailResp = $this->getJson("/api/v1/authors/{$author->id}", [
+            'X-ScoreBox-Api-Key' => 'test-secret-key-123',
+        ]);
+        $detailResp->assertStatus(200);
+        $detailResp->assertJson([
+            'success' => true,
+            'data' => [
+                'id' => $author->id,
+                'name' => 'Joaquín Rodrigo',
+                'country' => 'España',
+                'scores' => [
+                    [
+                        'id' => $score->id,
+                        'title' => 'Concierto de Aranjuez',
+                    ],
+                ],
+            ],
+        ]);
     }
 }

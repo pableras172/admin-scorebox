@@ -29,7 +29,14 @@ class ScoreDocumentsTable
                     ->searchable()
                     ->sortable()
                     ->weight('bold')
-                    ->description(fn (ScoreDocument $record): ?string => $record->composer),
+                    ->description(fn (ScoreDocument $record): ?string => $record->author?->name ?? $record->composer),
+
+                TextColumn::make('author.name')
+                    ->label('Autor')
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder(fn (ScoreDocument $record): string => $record->composer ?? '-')
+                    ->toggleable(),
 
                 TextColumn::make('sku')
                     ->label('SKU')
@@ -116,6 +123,12 @@ class ScoreDocumentsTable
                     ->placeholder('Todos')
                     ->trueLabel('Solo PRO')
                     ->falseLabel('Gratis / Todos'),
+
+                SelectFilter::make('author_id')
+                    ->label('Autor / Compositor')
+                    ->relationship('author', 'name')
+                    ->searchable()
+                    ->preload(),
 
                 SelectFilter::make('music_genre_id')
                     ->label('Género Musical')

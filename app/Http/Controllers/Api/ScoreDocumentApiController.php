@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Author;
 use App\Models\BandType;
 use App\Models\MusicGenre;
 use App\Models\ScoreDocument;
@@ -22,7 +23,7 @@ class ScoreDocumentApiController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = ScoreDocument::query()->published()->with(['musicGenre', 'bandType']);
+        $query = ScoreDocument::query()->published()->with(['author', 'musicGenre', 'bandType']);
 
         if ($request->filled('search')) {
             $search = trim((string) $request->query('search'));
@@ -32,6 +33,7 @@ class ScoreDocumentApiController extends Controller
                     ->orWhere('composer', 'like', "%{$search}%")
                     ->orWhere('instrument', 'like', "%{$search}%")
                     ->orWhere('genre', 'like', "%{$search}%")
+                    ->orWhereHas('author', fn (Builder $a): Builder => $a->where('name', 'like', "%{$search}%"))
                     ->orWhereHas('musicGenre', fn (Builder $g): Builder => $g->where('name', 'like', "%{$search}%"))
                     ->orWhereHas('bandType', fn (Builder $b): Builder => $b->where('name', 'like', "%{$search}%"));
             });
@@ -39,6 +41,16 @@ class ScoreDocumentApiController extends Controller
 
         if ($request->filled('sku')) {
             $query->where('sku', trim((string) $request->query('sku')));
+        }
+
+        if ($request->filled('author_id')) {
+            $query->where('author_id', (int) $request->query('author_id'));
+        } elseif ($request->filled('author')) {
+            $author = trim((string) $request->query('author'));
+            $query->where(function (Builder $q) use ($author): void {
+                $q->where('composer', 'like', "%{$author}%")
+                    ->orWhereHas('author', fn (Builder $a): Builder => $a->where('slug', $author)->orWhere('name', 'like', "%{$author}%"));
+            });
         }
 
         if ($request->filled('music_genre_id')) {
@@ -109,7 +121,7 @@ class ScoreDocumentApiController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $score = ScoreDocument::query()->published()->with(['musicGenre', 'bandType'])->find($id);
+        $score = ScoreDocument::query()->published()->with(['author', 'musicGenre', 'bandType'])->find($id);
 
         if (! $score) {
             return response()->json([
@@ -203,6 +215,102 @@ class ScoreDocumentApiController extends Controller
     }
 
     /**
+     * List all active authors/composers for client apps.
+     */
+    public function authors(Request $request): JsonResponse
+    {
+        $query = Author::query()->active()->withCount([
+            'scoreDocuments' => fn ($q) => $q->published(),
+        ]);
+
+        if ($request->filled('search')) {
+            $search = trim((string) $request->query('search'));
+            $query->where(function (Builder $q) use ($search): void {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('country', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('country')) {
+            $query->where('country', trim((string) $request->query('country')));
+        }
+
+        if ($request->has('featured')) {
+            $isFeatured = filter_var($request->query('featured'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($isFeatured !== null) {
+                $query->where('is_featured', $isFeatured);
+            }
+        }
+
+        $query->orderBy('name');
+
+        $perPage = min(max((int) $request->query('per_page', 30), 1), 100);
+        $paginator = $query->paginate($perPage);
+
+        $items = collect($paginator->items())->map(fn (Author $author): array => $this->transformAuthor($author));
+
+        return response()->json([
+            'success' => true,
+            'data' => $items,
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * Get details of a single author/composer and their published scores.
+     */
+    public function authorDetail(int $id): JsonResponse
+    {
+        $author = Author::query()->active()->with([
+            'scoreDocuments' => fn ($q) => $q->published()->with(['musicGenre', 'bandType']),
+        ])->find($id);
+
+        if (! $author) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Autor o compositor no encontrado o no disponible.',
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $data = $this->transformAuthor($author);
+        $data['scores'] = $author->scoreDocuments->map(fn (ScoreDocument $score): array => $this->transformScoreDocument($score));
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function transformAuthor(Author $author): array
+    {
+        return [
+            'id' => $author->id,
+            'name' => $author->name,
+            'slug' => $author->slug,
+            'country' => $author->country,
+            'photo_url' => $author->photo_url,
+            'birth_year' => $author->birth_year,
+            'death_year' => $author->death_year,
+            'website_url' => $author->website_url,
+            'spotify_url' => $author->spotify_url,
+            'youtube_url' => $author->youtube_url,
+            'instagram_url' => $author->instagram_url,
+            'social_links' => $author->social_links,
+            'bio' => $author->bio,
+            'is_featured' => $author->is_featured,
+            'scores_count' => $author->score_documents_count ?? $author->scoreDocuments()->published()->count(),
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function transformScoreDocument(ScoreDocument $score): array
@@ -211,7 +319,22 @@ class ScoreDocumentApiController extends Controller
             'id' => $score->id,
             'title' => $score->title,
             'sku' => $score->sku,
-            'composer' => $score->composer,
+            'author_id' => $score->author_id,
+            'composer' => $score->author?->name ?? $score->composer,
+            'author' => $score->author ? [
+                'id' => $score->author->id,
+                'name' => $score->author->name,
+                'slug' => $score->author->slug,
+                'country' => $score->author->country,
+                'photo_url' => $score->author->photo_url,
+                'birth_year' => $score->author->birth_year,
+                'death_year' => $score->author->death_year,
+                'website_url' => $score->author->website_url,
+                'spotify_url' => $score->author->spotify_url,
+                'youtube_url' => $score->author->youtube_url,
+                'instagram_url' => $score->author->instagram_url,
+                'is_featured' => $score->author->is_featured,
+            ] : null,
             'instrument' => $score->instrument,
             'genre' => $score->musicGenre?->name ?? $score->genre,
             'music_genre' => $score->musicGenre ? [

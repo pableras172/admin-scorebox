@@ -37,8 +37,10 @@ Obtiene una lista paginada y filtrable de las obras actualmente publicadas y vig
 
 | Parámetro | Tipo | Por defecto | Descripción |
 | :--- | :--- | :---: | :--- |
-| `search` | `string` | - | Búsqueda parcial de texto en título, compositor, instrumento, género o agrupación. |
+| `search` | `string` | - | Búsqueda parcial de texto en título, compositor, autor, instrumento, género o agrupación. |
 | `sku` | `string` | - | Filtro exacto por SKU / Product ID de Google Play Store (ej. `score_canon_in_d`). |
+| `author_id` | `int` | - | Filtro exacto por ID del autor o compositor. |
+| `author` | `string` | - | Filtro por nombre o slug del autor / compositor (ej: `manuel-de-falla`, `beethoven`). |
 | `music_genre_id`| `int` | - | Filtro exacto por ID de género musical. |
 | `genre` | `string` | - | Filtro por slug o nombre de género musical (ej: `pasodoble`, `marcha-procesional`). |
 | `band_type_id` | `int` | - | Filtro exacto por ID de tipo de banda / agrupación. |
@@ -68,7 +70,22 @@ Accept: application/json
       "id": 1,
       "title": "Amparito Roca",
       "sku": "score_amparito_roca",
+      "author_id": 4,
       "composer": "Jaime Texidor",
+      "author": {
+        "id": 4,
+        "name": "Jaime Texidor",
+        "slug": "jaime-texidor",
+        "country": "España",
+        "photo_url": "https://admin.scorebox.pro/storage/authors/texidor.jpg",
+        "birth_year": 1884,
+        "death_year": 1957,
+        "website_url": "https://jaimetexidor.com",
+        "spotify_url": "https://open.spotify.com/artist/...",
+        "youtube_url": "https://youtube.com/@jaimetexidor",
+        "instagram_url": "https://instagram.com/jaimetexidor",
+        "is_featured": true
+      },
       "instrument": "Partitura Completa / Score",
       "genre": "Pasodoble",
       "music_genre": {
@@ -271,6 +288,122 @@ Accept: application/json
 
 ---
 
+### 3.6. Listar Autores / Compositores (`GET /authors`)
+
+Devuelve la lista de compositores y autores registrados en el catálogo de ScoreBox, con su biografía básica, enlaces y número de obras publicadas.
+
+#### Parámetros de consulta (Query Params):
+
+| Parámetro | Tipo | Por defecto | Descripción |
+| :--- | :--- | :---: | :--- |
+| `search` | `string` | - | Búsqueda parcial de texto por nombre o país del autor. |
+| `country` | `string` | - | Filtrar por país o nacionalidad exacta (ej: `España`). |
+| `featured` | `boolean` | - | Filtrar solo autores destacados (`true` o `false`). |
+| `per_page` | `integer`| `30` | Autores por página (máximo 100). |
+| `page` | `integer`| `1` | Página solicitada. |
+
+#### Ejemplo de Petición:
+```http
+GET /api/v1/authors?featured=true HTTP/1.1
+Host: admin.scorebox.pro
+X-ScoreBox-Api-Key: TU_API_KEY_AQUI
+Accept: application/json
+```
+
+#### Respuesta Exitosa (`200 OK`):
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Manuel de Falla",
+      "slug": "manuel-de-falla",
+      "country": "España",
+      "photo_url": "https://admin.scorebox.pro/storage/authors/falla.jpg",
+      "birth_year": 1876,
+      "death_year": 1946,
+      "website_url": "https://manueldefalla.com",
+      "spotify_url": "https://open.spotify.com/artist/...",
+      "youtube_url": "https://youtube.com/@manueldefalla",
+      "instagram_url": null,
+      "social_links": {
+        "wikipedia": "https://es.wikipedia.org/wiki/Manuel_de_Falla"
+      },
+      "bio": "Uno de los compositores españoles más importantes de la primera mitad del siglo XX...",
+      "is_featured": true,
+      "scores_count": 8
+    }
+  ],
+  "meta": {
+    "current_page": 1,
+    "last_page": 1,
+    "per_page": 30,
+    "total": 1
+  }
+}
+```
+
+---
+
+### 3.7. Obtener Perfil de Autor con sus Obras (`GET /authors/{id}`)
+
+Devuelve la ficha completa del compositor y el catálogo completo de sus partituras publicadas en ScoreBox.
+
+#### Ejemplo de Petición:
+```http
+GET /api/v1/authors/1 HTTP/1.1
+Host: admin.scorebox.pro
+X-ScoreBox-Api-Key: TU_API_KEY_AQUI
+Accept: application/json
+```
+
+#### Respuesta Exitosa (`200 OK`):
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "name": "Manuel de Falla",
+    "slug": "manuel-de-falla",
+    "country": "España",
+    "photo_url": "https://admin.scorebox.pro/storage/authors/falla.jpg",
+    "birth_year": 1876,
+    "death_year": 1946,
+    "website_url": "https://manueldefalla.com",
+    "spotify_url": "https://open.spotify.com/artist/...",
+    "youtube_url": "https://youtube.com/@manueldefalla",
+    "instagram_url": null,
+    "social_links": {
+      "wikipedia": "https://es.wikipedia.org/wiki/Manuel_de_Falla"
+    },
+    "bio": "Uno de los compositores españoles más importantes...",
+    "is_featured": true,
+    "scores_count": 2,
+    "scores": [
+      {
+        "id": 10,
+        "title": "El Amor Brujo - Danza Ritual del Fuego",
+        "sku": "score_falla_fuego",
+        "author_id": 1,
+        "composer": "Manuel de Falla",
+        "author": { ... },
+        "instrument": "Banda Completa",
+        "genre": "Música Clásica Española",
+        "music_genre": { "id": 4, "name": "Clásica", "slug": "clasica" },
+        "band_type": { "id": 1, "name": "Banda de Música", "slug": "banda-de-musica" },
+        "difficulty": "hard",
+        "is_premium_only": false,
+        "price": "0.00",
+        "download_url": "https://admin.scorebox.pro/api/v1/scores/10/download"
+      }
+    ]
+  }
+}
+```
+
+---
+
 ## 4. Códigos de Estado HTTP y Errores
 
 | Código HTTP | Nombre | Causa común |
@@ -327,11 +460,43 @@ data class CategoryItemDto(
     @SerializedName("description") val description: String?
 )
 
+data class AuthorDto(
+    @SerializedName("id") val id: Long,
+    @SerializedName("name") val name: String,
+    @SerializedName("slug") val slug: String,
+    @SerializedName("country") val country: String?,
+    @SerializedName("photo_url") val photoUrl: String?,
+    @SerializedName("birth_year") val birthYear: Int?,
+    @SerializedName("death_year") val deathYear: Int?,
+    @SerializedName("website_url") val websiteUrl: String?,
+    @SerializedName("spotify_url") val spotifyUrl: String?,
+    @SerializedName("youtube_url") val youtubeUrl: String?,
+    @SerializedName("instagram_url") val instagramUrl: String?,
+    @SerializedName("social_links") val socialLinks: Map<String, String>?,
+    @SerializedName("bio") val bio: String?,
+    @SerializedName("is_featured") val isFeatured: Boolean,
+    @SerializedName("scores_count") val scoresCount: Int?,
+    @SerializedName("scores") val scores: List<ScoreDocumentDto>?
+)
+
+data class AuthorsListResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("data") val data: List<AuthorDto>,
+    @SerializedName("meta") val meta: PaginationMetaDto?
+)
+
+data class AuthorDetailResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("data") val data: AuthorDto
+)
+
 data class ScoreDocumentDto(
     @SerializedName("id") val id: Long,
     @SerializedName("title") val title: String,
     @SerializedName("sku") val sku: String?,
+    @SerializedName("author_id") val authorId: Long?,
     @SerializedName("composer") val composer: String?,
+    @SerializedName("author") val author: AuthorDto?,
     @SerializedName("instrument") val instrument: String?,
     @SerializedName("genre") val genre: String?,
     @SerializedName("music_genre") val musicGenre: CategoryItemDto?,
@@ -380,6 +545,8 @@ interface ScoreBoxCatalogApi {
         @Header("X-ScoreBox-Api-Key") apiKey: String,
         @Query("search") search: String? = null,
         @Query("sku") sku: String? = null,
+        @Query("author_id") authorId: Long? = null,
+        @Query("author") authorSlugOrName: String? = null,
         @Query("genre") genreSlug: String? = null,
         @Query("music_genre_id") musicGenreId: Long? = null,
         @Query("band_type") bandTypeSlug: String? = null,
@@ -395,6 +562,25 @@ interface ScoreBoxCatalogApi {
 
     @GET("scores/{id}")
     suspend fun getScoreDetail(
+        @Header("X-ScoreBox-Api-Key") apiKey: String,
+        @Path("id") scoreId: Long
+    ): Response<ScoreDetailResponse>
+
+    @GET("authors")
+    suspend fun getAuthors(
+        @Header("X-ScoreBox-Api-Key") apiKey: String,
+        @Query("search") search: String? = null,
+        @Query("country") country: String? = null,
+        @Query("featured") featured: Boolean? = null,
+        @Query("page") page: Int = 1,
+        @Query("per_page") perPage: Int = 30
+    ): Response<AuthorsListResponse>
+
+    @GET("authors/{id}")
+    suspend fun getAuthorDetail(
+        @Header("X-ScoreBox-Api-Key") apiKey: String,
+        @Path("id") authorId: Long
+    ): Response<AuthorDetailResponse>
         @Header("X-ScoreBox-Api-Key") apiKey: String,
         @Path("id") scoreId: Long
     ): Response<ScoreDetailResponse>
@@ -466,10 +652,12 @@ Para cualquier ajuste en el backend del panel de administración:
 * **Middleware de API Key:** [`app/Http/Middleware/ValidateScoreBoxApiKey.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/app/Http/Middleware/ValidateScoreBoxApiKey.php)
 * **Modelos Eloquent:** 
   * [`app/Models/ScoreDocument.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/app/Models/ScoreDocument.php)
+  * [`app/Models/Author.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/app/Models/Author.php)
   * [`app/Models/MusicGenre.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/app/Models/MusicGenre.php)
   * [`app/Models/BandType.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/app/Models/BandType.php)
 * **Recursos Filament Admin:** 
   * [`app/Filament/Resources/ScoreDocuments/ScoreDocumentResource.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/app/Filament/Resources/ScoreDocuments/ScoreDocumentResource.php)
+  * [`app/Filament/Resources/Authors/AuthorResource.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/app/Filament/Resources/Authors/AuthorResource.php)
   * [`app/Filament/Resources/MusicGenres/MusicGenreResource.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/app/Filament/Resources/MusicGenres/MusicGenreResource.php)
   * [`app/Filament/Resources/BandTypes/BandTypeResource.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/app/Filament/Resources/BandTypes/BandTypeResource.php)
 * **Seeder Inicial:** [`database/seeders/MusicGenreAndBandTypeSeeder.php`](file:///c:/Users/pable/Documents/Webs/Score/aministrador/database/seeders/MusicGenreAndBandTypeSeeder.php)
