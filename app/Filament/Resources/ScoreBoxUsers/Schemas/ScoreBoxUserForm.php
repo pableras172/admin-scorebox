@@ -42,6 +42,18 @@ class ScoreBoxUserForm
                     ]),
                 Section::make('Estudio y suscripción')
                     ->schema([
+                        TextInput::make('platform')
+                            ->label('Plataforma / Sistema Operativo')
+                            ->formatStateUsing(function (?string $state): string {
+                                $normalized = strtolower(trim((string) $state));
+
+                                return match ($normalized) {
+                                    'android' => 'Android',
+                                    'ios' => 'iOS',
+                                    default => $state ?: 'No especificada',
+                                };
+                            })
+                            ->disabled(),
                         TextInput::make('mainInstrument')
                             ->label('Instrumento principal')
                             ->disabled(),

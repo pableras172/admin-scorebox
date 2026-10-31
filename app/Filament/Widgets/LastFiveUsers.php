@@ -32,6 +32,7 @@ class LastFiveUsers extends TableWidget
                         'email' => $user['email'] ?? null,
                         'displayName' => $user['displayName'] ?? null,
                         'isPremium' => (bool) ($user['isPremium'] ?? false),
+                        'platform' => $user['platform'] ?? null,
                         'createdAt' => $user['createdAt'] ?? null,
                     ]);
 
@@ -51,6 +52,19 @@ class LastFiveUsers extends TableWidget
                 TextColumn::make('email')
                     ->label('Email')
                     ->searchable(),
+                TextColumn::make('platform')
+                    ->label('SO')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => match (strtolower((string) $state)) {
+                        'android' => 'Android',
+                        'ios' => 'iOS',
+                        default => $state ?: '-',
+                    })
+                    ->color(fn (?string $state): string => match (strtolower((string) $state)) {
+                        'android' => 'success',
+                        'ios' => 'info',
+                        default => 'gray',
+                    }),
                 IconColumn::make('isPremium')
                     ->label('Premium')
                     ->boolean(),

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Marketing;
 
 use App\Filament\Widgets\LatestCampaignsWidget;
+use App\Filament\Widgets\UsersAndroidVsIos;
 use App\Filament\Widgets\UsesScoreBox;
 use App\Models\MarketingCampaign;
 use App\Models\PromotionalCode;
@@ -73,5 +74,22 @@ final class DashboardWidgetsTest extends TestCase
             ->test(LatestCampaignsWidget::class)
             ->assertSuccessful()
             ->assertSee('Última Campaña');
+    }
+
+    public function test_users_android_vs_ios_widget_renders_chart_data(): void
+    {
+        $mockGateway = Mockery::mock(FirestoreUserGateway::class);
+        $mockGateway->shouldReceive('countByPlatform')->andReturn(FirestoreResult::success([
+            'android' => 80,
+            'ios' => 20,
+        ]));
+        $this->app->instance(FirestoreUserGateway::class, $mockGateway);
+
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)
+            ->test(UsersAndroidVsIos::class)
+            ->assertSuccessful()
+            ->assertSee('Usuarios Android vs iOS');
     }
 }

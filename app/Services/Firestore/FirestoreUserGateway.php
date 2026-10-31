@@ -202,6 +202,71 @@ class FirestoreUserGateway
         }
     }
 
+    /**
+     * Count users by platform (android vs ios).
+     * Uses native Firestore aggregation count queries and caches successful results for 30 minutes.
+     */
+    public function countByPlatform(bool $fresh = false): FirestoreResult
+    {
+        $cacheKey = 'firestore:users:count_by_platform';
+
+        if (! $fresh && Cache::has($cacheKey)) {
+            $cached = Cache::get($cacheKey);
+            if ($cached instanceof FirestoreResult && $cached->isSuccess()) {
+                return $cached;
+            }
+        }
+
+        try {
+            $client = $this->factory->make();
+            $collection = $client->collection(self::COLLECTION_NAME);
+
+            $androidQuery = $collection->where('platform', '==', 'android');
+            $iosQuery = $collection->where('platform', '==', 'ios');
+
+            if (method_exists($androidQuery, 'count')) {
+                $androidCount = (int) $androidQuery->count();
+                $iosCount = (int) $iosQuery->count();
+            } else {
+                $androidCount = 0;
+                foreach ($androidQuery->documents() as $document) {
+                    if ($document !== null) {
+                        $androidCount++;
+                    }
+                }
+
+                $iosCount = 0;
+                foreach ($iosQuery->documents() as $document) {
+                    if ($document !== null) {
+                        $iosCount++;
+                    }
+                }
+            }
+
+            $result = FirestoreResult::success([
+                'android' => $androidCount,
+                'ios' => $iosCount,
+            ], [
+                'collection' => self::COLLECTION_NAME,
+                'android_count' => $androidCount,
+                'ios_count' => $iosCount,
+            ]);
+
+            Cache::put($cacheKey, $result, now()->addSeconds(self::CACHE_TTL_COUNTS));
+
+            return $result;
+        } catch (RuntimeException|\Throwable $exception) {
+            Log::error('Firestore platform user count failed.', [
+                'collection' => self::COLLECTION_NAME,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return FirestoreResult::failure('FIRESTORE_ERROR', 'Unable to count Firestore users by platform.', [
+                'collection' => self::COLLECTION_NAME,
+            ]);
+        }
+    }
+
     public function all(array $filters = [], bool $fresh = false): FirestoreResult
     {
         return $this->list($filters, null, 0, $fresh);

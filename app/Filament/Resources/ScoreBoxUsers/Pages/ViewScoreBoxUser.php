@@ -184,6 +184,7 @@ class ViewScoreBoxUser extends ViewRecord
                 'mainInstrument' => $user['mainInstrument'] ?? null,
                 'studyType' => $user['studyType'] ?? null,
                 'subscription' => $user['subscription'] ?? $user['subscrition'] ?? null,
+                'platform' => $user['platform'] ?? null,
                 'isPremium' => (bool) ($user['isPremium'] ?? false),
                 'notificationsEnabled' => (bool) ($user['notificationsEnabled'] ?? false),
                 'createdAt' => $user['createdAt'] ?? null,

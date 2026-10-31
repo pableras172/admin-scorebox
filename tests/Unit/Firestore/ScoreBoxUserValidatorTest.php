@@ -20,6 +20,7 @@ final class ScoreBoxUserValidatorTest extends TestCase
             'displayName' => 'Player One',
             'photoUrl' => 'https://example.com/avatar.png',
             'active' => true,
+            'platform' => 'ios',
             'createdAt' => '2026-08-30T10:00:00Z',
             'updatedAt' => '2026-08-30T10:15:00Z',
             'profile' => ['language' => 'es'],
@@ -31,6 +32,7 @@ final class ScoreBoxUserValidatorTest extends TestCase
         $this->assertSame('player@example.com', $normalized['email']);
         $this->assertSame('Player One', $normalized['displayName']);
         $this->assertTrue($normalized['active']);
+        $this->assertSame('ios', $normalized['platform']);
         $this->assertSame(['language' => 'es'], $normalized['profile']);
         $this->assertIsString($normalized['createdAt']);
         $this->assertIsString($normalized['updatedAt']);

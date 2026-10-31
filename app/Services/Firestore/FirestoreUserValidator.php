@@ -77,6 +77,7 @@ final class FirestoreUserValidator
             'phone' => self::normalizeOptionalString($document['phone'] ?? null),
             'studyType' => self::normalizeOptionalString($document['studyType'] ?? null),
             'subscription' => self::normalizeOptionalString($document['subscription'] ?? $document['subscrition'] ?? null),
+            'platform' => self::normalizePlatform($document['platform'] ?? null),
         ];
 
         if (array_key_exists('displayName', $document) && $document['displayName'] !== null && ! is_string($document['displayName'])) {
@@ -107,6 +108,21 @@ final class FirestoreUserValidator
         }
 
         return (bool) $value;
+    }
+
+    private static function normalizePlatform(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_string($value)) {
+            $trimmed = strtolower(trim($value));
+
+            return $trimmed === '' ? null : $trimmed;
+        }
+
+        return strtolower((string) $value);
     }
 
     private static function normalizeOptionalString(mixed $value): ?string

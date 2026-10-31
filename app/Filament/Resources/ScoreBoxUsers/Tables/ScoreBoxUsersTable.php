@@ -71,10 +71,12 @@ class ScoreBoxUsersTable
             $displayName = mb_strtolower(self::normalizeStringValue($user->displayName ?? null) ?? '');
             $email = mb_strtolower(self::normalizeStringValue($user->email ?? null) ?? '');
             $uid = mb_strtolower(self::normalizeStringValue($user->uid ?? null) ?? '');
+            $platform = mb_strtolower(self::normalizeStringValue($user->platform ?? null) ?? '');
 
             return str_contains($displayName, $normalizedTerm)
                 || str_contains($email, $normalizedTerm)
-                || str_contains($uid, $normalizedTerm);
+                || str_contains($uid, $normalizedTerm)
+                || str_contains($platform, $normalizedTerm);
         })->values();
     }
 
@@ -102,6 +104,14 @@ class ScoreBoxUsersTable
 
                 if ($key === 'studyType') {
                     if ((self::normalizeStringValue($user->studyType ?? null) ?? '') !== $normalizedValue) {
+                        return false;
+                    }
+
+                    continue;
+                }
+
+                if ($key === 'platform') {
+                    if (mb_strtolower(self::normalizeStringValue($user->platform ?? null) ?? '') !== mb_strtolower($normalizedValue)) {
                         return false;
                     }
 
@@ -159,6 +169,7 @@ class ScoreBoxUsersTable
                         'phone' => self::normalizeStringValue($user['phone'] ?? null),
                         'studyType' => self::normalizeStringValue($user['studyType'] ?? null),
                         'subscription' => self::normalizeStringValue($user['subscription'] ?? $user['subscrition'] ?? null),
+                        'platform' => self::normalizeStringValue($user['platform'] ?? null),
                     ]);
 
                     return $model;
@@ -227,6 +238,38 @@ class ScoreBoxUsersTable
                 TextColumn::make('subscription')
                     ->label('Suscripción')
                     ->searchable(),
+                TextColumn::make('platform')
+                    ->label('Plataforma')
+                    ->badge()
+                    ->formatStateUsing(function (?string $state): string {
+                        $normalized = strtolower(trim((string) $state));
+
+                        return match ($normalized) {
+                            'android' => 'Android',
+                            'ios' => 'iOS',
+                            default => $state ?: '-',
+                        };
+                    })
+                    ->color(function (?string $state): string {
+                        $normalized = strtolower(trim((string) $state));
+
+                        return match ($normalized) {
+                            'android' => 'success',
+                            'ios' => 'info',
+                            default => 'gray',
+                        };
+                    })
+                    ->icon(function (?string $state): ?string {
+                        $normalized = strtolower(trim((string) $state));
+
+                        return match ($normalized) {
+                            'android' => 'heroicon-m-device-phone-mobile',
+                            'ios' => 'heroicon-m-device-phone-mobile',
+                            default => null,
+                        };
+                    })
+                    ->searchable()
+                    ->sortable(),
                 IconColumn::make('isPremium')
                     ->label('Premium')
                     ->boolean(),
@@ -277,6 +320,13 @@ class ScoreBoxUsersTable
                             ->all();
                     })
                     ->placeholder('Todos los tipos'),
+                SelectFilter::make('platform')
+                    ->label('Plataforma')
+                    ->options([
+                        'android' => 'Android',
+                        'ios' => 'iOS',
+                    ])
+                    ->placeholder('Todas las plataformas'),
                 TernaryFilter::make('isPremium')
                     ->label('Premium')
                     ->placeholder('Todos')

@@ -34,14 +34,21 @@ class ScoreBoxUsersTableSearchTest extends TestCase
 
         $matchedCaseInsensitive = ScoreBoxUsersTable::filterUsersForSearch($users, 'LUCIA');
         $this->assertSame(['u3'], $matchedCaseInsensitive->pluck('uid')->all());
+
+        $usersWithPlatform = collect([
+            new FirestoreUser(['uid' => 'u1', 'displayName' => 'User One', 'email' => 'u1@example.com', 'platform' => 'android']),
+            new FirestoreUser(['uid' => 'u2', 'displayName' => 'User Two', 'email' => 'u2@example.com', 'platform' => 'ios']),
+        ]);
+        $matchedByPlatform = ScoreBoxUsersTable::filterUsersForSearch($usersWithPlatform, 'ios');
+        $this->assertSame(['u2'], $matchedByPlatform->pluck('uid')->all());
     }
 
     public function test_predefined_filters_reduce_the_visible_users(): void
     {
         $users = collect([
-            new FirestoreUser(['uid' => 'u1', 'email' => 'ana@example.com', 'displayName' => 'Ana', 'country' => 'España', 'studyType' => 'Grado', 'isPremium' => true]),
-            new FirestoreUser(['uid' => 'u2', 'email' => 'pedro@example.com', 'displayName' => 'Pedro', 'country' => 'México', 'studyType' => 'Máster', 'isPremium' => false]),
-            new FirestoreUser(['uid' => 'u3', 'email' => 'lucia@example.com', 'displayName' => 'Lucía', 'country' => 'España', 'studyType' => 'Doctorado', 'isPremium' => true]),
+            new FirestoreUser(['uid' => 'u1', 'email' => 'ana@example.com', 'displayName' => 'Ana', 'country' => 'España', 'studyType' => 'Grado', 'isPremium' => true, 'platform' => 'android']),
+            new FirestoreUser(['uid' => 'u2', 'email' => 'pedro@example.com', 'displayName' => 'Pedro', 'country' => 'México', 'studyType' => 'Máster', 'isPremium' => false, 'platform' => 'ios']),
+            new FirestoreUser(['uid' => 'u3', 'email' => 'lucia@example.com', 'displayName' => 'Lucía', 'country' => 'España', 'studyType' => 'Doctorado', 'isPremium' => true, 'platform' => 'android']),
         ]);
 
         $filteredByCountry = ScoreBoxUsersTable::filterUsersForFilters($users, ['country' => 'España']);
@@ -52,6 +59,12 @@ class ScoreBoxUsersTableSearchTest extends TestCase
 
         $filteredByStudyType = ScoreBoxUsersTable::filterUsersForFilters($users, ['studyType' => 'Máster']);
         $this->assertSame(['u2'], $filteredByStudyType->pluck('uid')->all());
+
+        $filteredByPlatform = ScoreBoxUsersTable::filterUsersForFilters($users, ['platform' => 'ios']);
+        $this->assertSame(['u2'], $filteredByPlatform->pluck('uid')->all());
+
+        $filteredByAndroid = ScoreBoxUsersTable::filterUsersForFilters($users, ['platform' => 'android']);
+        $this->assertSame(['u1', 'u3'], $filteredByAndroid->pluck('uid')->all());
     }
 
     public function test_view_scorebox_user_renders_without_type_error(): void

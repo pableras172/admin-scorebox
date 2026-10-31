@@ -393,6 +393,53 @@ final class FirestoreUserGatewayTest extends LaravelTestCase
         $this->assertTrue($cachedResult->isSuccess());
     }
 
+    public function test_it_counts_users_by_platform_using_aggregation(): void
+    {
+        Cache::flush();
+
+        $query = new class
+        {
+            public function count(): int
+            {
+                return 40;
+            }
+        };
+
+        $collection = new class($query)
+        {
+            public function __construct(public object $query) {}
+
+            public function where(string $field, string $operator, mixed $value): object
+            {
+                return $this->query;
+            }
+        };
+
+        $client = new class($collection)
+        {
+            public function __construct(public object $collection) {}
+
+            public function collection(string $name): object
+            {
+                return $this->collection;
+            }
+        };
+
+        $factory = Mockery::mock(FirestoreClientFactory::class);
+        $factory->shouldReceive('make')->once()->andReturn($client);
+
+        $gateway = new FirestoreUserGateway($factory);
+
+        $result = $gateway->countByPlatform();
+        $this->assertTrue($result->isSuccess());
+        $this->assertSame(40, $result->data()['android']);
+        $this->assertSame(40, $result->data()['ios']);
+
+        // Second call should come from cache
+        $cachedResult = $gateway->countByPlatform();
+        $this->assertTrue($cachedResult->isSuccess());
+    }
+
     public function test_it_rejects_invalid_update_payloads(): void
     {
         $client = new class

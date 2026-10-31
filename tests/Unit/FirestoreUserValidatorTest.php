@@ -16,10 +16,26 @@ class FirestoreUserValidatorTest extends TestCase
             'isPremium' => true,
             'notificationsEnabled' => true,
             'subscription' => 'lifetime',
+            'platform' => 'Android',
         ]);
 
         $this->assertTrue($validated['isPremium']);
         $this->assertTrue($validated['notificationsEnabled']);
         $this->assertSame('lifetime', $validated['subscription']);
+        $this->assertSame('android', $validated['platform']);
+    }
+
+    public function test_it_normalizes_platform_field_for_ios_and_handles_null(): void
+    {
+        $iosUser = FirestoreUserValidator::validate([
+            'uid' => 'user-ios',
+            'platform' => 'iOS',
+        ]);
+        $this->assertSame('ios', $iosUser['platform']);
+
+        $nullUser = FirestoreUserValidator::validate([
+            'uid' => 'user-null',
+        ]);
+        $this->assertNull($nullUser['platform']);
     }
 }

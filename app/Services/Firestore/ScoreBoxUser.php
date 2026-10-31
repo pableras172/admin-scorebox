@@ -22,6 +22,7 @@ final class ScoreBoxUser
         public readonly ?string $phone,
         public readonly ?string $studyType,
         public readonly ?string $subscription,
+        public readonly ?string $platform = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -46,6 +47,7 @@ final class ScoreBoxUser
             phone: self::asNullableString($data['phone'] ?? null),
             studyType: self::asNullableString($data['studyType'] ?? null),
             subscription: self::asNullableString($data['subscription'] ?? $data['subscrition'] ?? null),
+            platform: self::asNullableString($data['platform'] ?? null),
         );
     }
 
@@ -67,6 +69,7 @@ final class ScoreBoxUser
             'phone' => $this->phone,
             'studyType' => $this->studyType,
             'subscription' => $this->subscription,
+            'platform' => $this->platform,
         ];
     }
 
