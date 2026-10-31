@@ -14,6 +14,10 @@ class LastFiveUsers extends TableWidget
 {
     protected static ?string $heading = 'Últimos 5 usuarios creados';
 
+    protected static ?int $sort = 5;
+
+    protected int|string|array $columnSpan = 1;
+
     public function table(Table $table): Table
     {
         $records = function (): LengthAwarePaginator {

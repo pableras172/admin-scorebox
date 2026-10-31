@@ -15,7 +15,7 @@ class LatestCampaignsWidget extends TableWidget
 {
     protected static ?string $heading = 'Últimas Campañas de Marketing';
 
-    protected static ?int $sort = 3;
+    protected static ?int $sort = 6;
 
     protected int|string|array $columnSpan = 'full';
 

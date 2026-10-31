@@ -14,6 +14,8 @@ class UsersAndroidVsIos extends ChartWidget
 
     protected static ?int $sort = 2;
 
+    protected int|string|array $columnSpan = 1;
+
     protected function getData(): array
     {
         try {
