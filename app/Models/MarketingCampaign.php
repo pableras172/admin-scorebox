@@ -47,6 +47,22 @@ final class MarketingCampaign extends Model
 
     public const SEGMENT_PREMIUM = 'premium';
 
+    public const PLATFORM_ALL = 'all';
+
+    public const PLATFORM_ANDROID = 'android';
+
+    public const PLATFORM_IOS = 'ios';
+
+    public const TRIAL_STATUS_ALL = 'all';
+
+    public const TRIAL_STATUS_ACTIVE = 'trial_active';
+
+    public const TRIAL_STATUS_EXPIRED = 'trial_expired';
+
+    public const TRIAL_STATUS_PRO = 'pro';
+
+    public const TRIAL_STATUS_FREE = 'free';
+
     /**
      * @var list<string>
      */
@@ -55,6 +71,8 @@ final class MarketingCampaign extends Model
         'content',
         'target_segment',
         'target_instrument',
+        'target_platform',
+        'target_trial_status',
         'campaign_type',
         'exclude_previous_promo_recipients',
         'is_test',
@@ -75,6 +93,8 @@ final class MarketingCampaign extends Model
         'is_test' => true,
         'status' => self::STATUS_DRAFT,
         'target_segment' => self::SEGMENT_ALL,
+        'target_platform' => self::PLATFORM_ALL,
+        'target_trial_status' => self::TRIAL_STATUS_ALL,
         'recipients_count' => 0,
         'sent_count' => 0,
         'failed_count' => 0,

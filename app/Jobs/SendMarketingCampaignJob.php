@@ -70,8 +70,18 @@ class SendMarketingCampaignJob implements ShouldQueue
         ]);
 
         try {
-            $recipients = $campaign->target_instrument !== null
-                ? $resolver->resolve($campaign->target_segment, (bool) $campaign->is_test, $campaign->target_instrument)
+            $hasAdvancedFilters = filled($campaign->target_instrument)
+                || ($campaign->target_platform && $campaign->target_platform !== MarketingCampaign::PLATFORM_ALL)
+                || ($campaign->target_trial_status && $campaign->target_trial_status !== MarketingCampaign::TRIAL_STATUS_ALL);
+
+            $recipients = $hasAdvancedFilters
+                ? $resolver->resolve(
+                    $campaign->target_segment,
+                    (bool) $campaign->is_test,
+                    $campaign->target_instrument,
+                    $campaign->target_platform ?? MarketingCampaign::PLATFORM_ALL,
+                    $campaign->target_trial_status ?? MarketingCampaign::TRIAL_STATUS_ALL
+                )
                 : $resolver->resolve($campaign->target_segment, (bool) $campaign->is_test);
 
             // Filter recipients and validate stock for promotional code campaigns in production

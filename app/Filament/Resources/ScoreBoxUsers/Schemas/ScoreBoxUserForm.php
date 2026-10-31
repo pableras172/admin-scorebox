@@ -63,6 +63,37 @@ class ScoreBoxUserForm
                         TextInput::make('subscription')
                             ->label('Suscripción')
                             ->disabled(),
+                        TextInput::make('orderId')
+                            ->label('ID de Pedido / Transacción (Google Play / App Store)')
+                            ->placeholder('Sin compras registradas')
+                            ->disabled(),
+                        TextInput::make('trial_status')
+                            ->label('Estado Periodo de Prueba (7 días)')
+                            ->formatStateUsing(function (?string $state, ?FirestoreUser $record): string {
+                                if (! $record) {
+                                    return '-';
+                                }
+
+                                return match ($record->trialStatus ?? null) {
+                                    'pro' => 'PRO Vitalicio (Suscripción activa)',
+                                    'trial_active' => "En prueba activa (Quedan {$record->trialDaysRemaining} días)",
+                                    'trial_expired' => 'Periodo de prueba expirado',
+                                    'free' => 'Cuenta gratuita (Sin trial iniciado)',
+                                    default => '-',
+                                };
+                            })
+                            ->disabled(),
+                        TextInput::make('trial_start_date')
+                            ->label('Inicio de Periodo de Prueba')
+                            ->formatStateUsing(function (?string $state, ?FirestoreUser $record): string {
+                                $ts = $record?->trialStartDate;
+                                if (! $ts) {
+                                    return 'No iniciado';
+                                }
+
+                                return date('d/m/Y H:i', (int) ($ts / 1000));
+                            })
+                            ->disabled(),
                         Checkbox::make('isPremium')
                             ->label('Premium')
                             ->disabled(),
@@ -87,6 +118,27 @@ class ScoreBoxUserForm
                             })
                             ->disabled(),
                     ]),
+                Section::make('Copia de Seguridad y Sincronización en la Nube (Multi-Cloud)')
+                    ->description('Estado de respaldo automático en Google Drive o iCloud Drive.')
+                    ->schema([
+                        TextInput::make('cloudProvider')
+                            ->label('Proveedor en la Nube')
+                            ->formatStateUsing(fn (?string $state): string => match ($state) {
+                                'google_drive' => 'Google Drive',
+                                'icloud_drive' => 'iCloud Drive',
+                                default => 'Sin configurar / Desactivado',
+                            })
+                            ->disabled(),
+                        TextInput::make('cloudAccountEmail')
+                            ->label('Cuenta Vinculada')
+                            ->placeholder('No vinculada')
+                            ->disabled(),
+                        TextInput::make('lastBackupAt')
+                            ->label('Último Respaldo')
+                            ->placeholder('Sin copias registradas')
+                            ->disabled(),
+                    ])
+                    ->columns(3),
                 Section::make('Auditoría')
                     ->schema([
                         TextInput::make('createdAt')

@@ -8,6 +8,7 @@ use App\Mail\UserSupportMailable;
 use App\Models\FirestoreUser;
 use App\Models\PromotionalCode;
 use App\Services\Firestore\FirestoreUserGateway;
+use App\Services\Firestore\ScoreBoxUser;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -173,6 +174,12 @@ class ViewScoreBoxUser extends ViewRecord
         ]);
 
         if (is_array($user)) {
+            $userPayload = $user;
+            if (empty($userPayload['uid'])) {
+                $userPayload['uid'] = $uid;
+            }
+            $userObj = ScoreBoxUser::fromArray($userPayload);
+
             $model = new FirestoreUser([
                 'uid' => $user['uid'] ?? $uid,
                 'email' => $user['email'] ?? null,
@@ -185,6 +192,13 @@ class ViewScoreBoxUser extends ViewRecord
                 'studyType' => $user['studyType'] ?? null,
                 'subscription' => $user['subscription'] ?? $user['subscrition'] ?? null,
                 'platform' => $user['platform'] ?? null,
+                'orderId' => $user['orderId'] ?? null,
+                'trialStartDate' => $userObj->trialStartDate,
+                'trialStatus' => $userObj->getTrialStatus(),
+                'trialDaysRemaining' => $userObj->getTrialDaysRemaining(),
+                'cloudProvider' => $user['cloudProvider'] ?? null,
+                'cloudAccountEmail' => $user['cloudAccountEmail'] ?? null,
+                'lastBackupAt' => $user['lastBackupAt'] ?? null,
                 'isPremium' => (bool) ($user['isPremium'] ?? false),
                 'notificationsEnabled' => (bool) ($user['notificationsEnabled'] ?? false),
                 'createdAt' => $user['createdAt'] ?? null,

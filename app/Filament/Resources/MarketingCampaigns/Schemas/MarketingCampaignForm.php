@@ -135,6 +135,34 @@ class MarketingCampaignForm
                             ->dehydrated()
                             ->helperText('Filtra según el instrumento principal del músico en ScoreBox (Firestore). Déjalo vacío para no filtrar por instrumento.'),
 
+                        Select::make('target_platform')
+                            ->label('Segmentación por Plataforma')
+                            ->options([
+                                MarketingCampaign::PLATFORM_ALL => 'Todas las plataformas (Android + iOS)',
+                                MarketingCampaign::PLATFORM_ANDROID => 'Solo Android',
+                                MarketingCampaign::PLATFORM_IOS => 'Solo iOS',
+                            ])
+                            ->default(MarketingCampaign::PLATFORM_ALL)
+                            ->native(false)
+                            ->disabled(fn (Get $get): bool => (bool) $get('is_test'))
+                            ->dehydrated()
+                            ->helperText('Permite enviar la campaña exclusivamente a usuarios de Android o iOS.'),
+
+                        Select::make('target_trial_status')
+                            ->label('Segmentación por Estado de Trial / Compra')
+                            ->options([
+                                MarketingCampaign::TRIAL_STATUS_ALL => 'Cualquier estado (Todos)',
+                                MarketingCampaign::TRIAL_STATUS_ACTIVE => 'Período de prueba activo (Trial de 7 días en curso)',
+                                MarketingCampaign::TRIAL_STATUS_EXPIRED => 'Período de prueba vencido (Trial expirado sin compra)',
+                                MarketingCampaign::TRIAL_STATUS_PRO => 'Usuarios de pago (PRO / Lifetime)',
+                                MarketingCampaign::TRIAL_STATUS_FREE => 'Usuarios estándar (Free sin trial registrado)',
+                            ])
+                            ->default(MarketingCampaign::TRIAL_STATUS_ALL)
+                            ->native(false)
+                            ->disabled(fn (Get $get): bool => (bool) $get('is_test'))
+                            ->dehydrated()
+                            ->helperText('Permite diseñar campañas de retención (ej. recordatorio a usuarios con trial expirado para convertirlos a PRO).'),
+
                         DateTimePicker::make('scheduled_at')
                             ->label('Programar Envío Automático')
                             ->placeholder('Envío manual (inmediato al pulsar enviar)')

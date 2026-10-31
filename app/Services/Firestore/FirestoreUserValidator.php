@@ -78,6 +78,11 @@ final class FirestoreUserValidator
             'studyType' => self::normalizeOptionalString($document['studyType'] ?? null),
             'subscription' => self::normalizeOptionalString($document['subscription'] ?? $document['subscrition'] ?? null),
             'platform' => self::normalizePlatform($document['platform'] ?? null),
+            'orderId' => self::normalizeOptionalString($document['orderId'] ?? null),
+            'trialStartDate' => self::normalizeNumericTimestamp($document['trialStartDate'] ?? null),
+            'cloudProvider' => self::normalizeCloudProvider($document['cloudProvider'] ?? $document['cloud_provider'] ?? $document['cloudStorageProvider'] ?? null),
+            'cloudAccountEmail' => self::normalizeOptionalString($document['cloudAccountEmail'] ?? $document['cloudEmail'] ?? $document['cloud_storage_account_email'] ?? null),
+            'lastBackupAt' => self::normalizeTimestamp($document['lastBackupAt'] ?? $document['last_backup_at'] ?? $document['backupTime'] ?? null),
         ];
 
         if (array_key_exists('displayName', $document) && $document['displayName'] !== null && ! is_string($document['displayName'])) {
@@ -123,6 +128,39 @@ final class FirestoreUserValidator
         }
 
         return strtolower((string) $value);
+    }
+
+    private static function normalizeNumericTimestamp(mixed $value): ?int
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if ($value instanceof Timestamp) {
+            return (int) round(((float) $value->get()->format('U.u')) * 1000);
+        }
+
+        if (is_numeric($value)) {
+            $num = (float) $value;
+
+            return (int) ($num < 10_000_000_000 ? $num * 1000 : $num);
+        }
+
+        if (is_string($value)) {
+            $trimmed = trim($value);
+            if ($trimmed === '') {
+                return null;
+            }
+            if (is_numeric($trimmed)) {
+                return self::normalizeNumericTimestamp((float) $trimmed);
+            }
+            $parsed = strtotime($trimmed);
+            if ($parsed !== false) {
+                return $parsed * 1000;
+            }
+        }
+
+        return null;
     }
 
     private static function normalizeOptionalString(mixed $value): ?string
@@ -190,5 +228,28 @@ final class FirestoreUserValidator
         }
 
         return null;
+    }
+
+    private static function normalizeCloudProvider(mixed $value): ?string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        $normalized = strtolower(trim($value));
+
+        if (str_contains($normalized, 'icloud')) {
+            return 'icloud_drive';
+        }
+
+        if (str_contains($normalized, 'drive') || str_contains($normalized, 'google')) {
+            return 'google_drive';
+        }
+
+        if ($normalized === 'none') {
+            return 'none';
+        }
+
+        return $normalized;
     }
 }

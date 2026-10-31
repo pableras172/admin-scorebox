@@ -267,6 +267,61 @@ class FirestoreUserGateway
         }
     }
 
+    /**
+     * Count users by cloud backup provider (google_drive, icloud_drive, none/other).
+     */
+    public function countByCloudProvider(bool $fresh = false): FirestoreResult
+    {
+        $cacheKey = 'firestore:users:count_by_cloud_provider';
+
+        if (! $fresh && Cache::has($cacheKey)) {
+            $cached = Cache::get($cacheKey);
+            if ($cached instanceof FirestoreResult && $cached->isSuccess()) {
+                return $cached;
+            }
+        }
+
+        try {
+            $allResult = $this->all($fresh);
+            if (! $allResult->isSuccess()) {
+                return $allResult;
+            }
+
+            $users = (array) ($allResult->data() ?? []);
+            $drive = 0;
+            $icloud = 0;
+            $none = 0;
+
+            foreach ($users as $user) {
+                $provider = strtolower((string) ($user['cloudProvider'] ?? ''));
+                if (str_contains($provider, 'drive') || str_contains($provider, 'google')) {
+                    $drive++;
+                } elseif (str_contains($provider, 'icloud')) {
+                    $icloud++;
+                } else {
+                    $none++;
+                }
+            }
+
+            $result = FirestoreResult::success([
+                'google_drive' => $drive,
+                'icloud_drive' => $icloud,
+                'none' => $none,
+                'total' => count($users),
+            ], [
+                'collection' => self::COLLECTION_NAME,
+            ]);
+
+            Cache::put($cacheKey, $result, now()->addSeconds(self::CACHE_TTL_COUNTS));
+
+            return $result;
+        } catch (RuntimeException|\Throwable $exception) {
+            Log::error('Firestore cloud provider count failed: '.$exception->getMessage());
+
+            return FirestoreResult::failure('FIRESTORE_ERROR', 'Unable to count Firestore users by cloud provider.');
+        }
+    }
+
     public function all(array $filters = [], bool $fresh = false): FirestoreResult
     {
         return $this->list($filters, null, 0, $fresh);
@@ -389,6 +444,8 @@ class FirestoreUserGateway
     {
         Cache::forget('firestore:users:count_all');
         Cache::forget('firestore:users:count_by_premium');
+        Cache::forget('firestore:users:count_by_platform');
+        Cache::forget('firestore:users:count_by_cloud_provider');
         Cache::forget('firestore:users:all:'.md5(json_encode([])));
         Cache::forget('firestore:users:all:'.md5(json_encode(['isPremium' => true])));
         Cache::forget('firestore:users:all:'.md5(json_encode(['isPremium' => false])));

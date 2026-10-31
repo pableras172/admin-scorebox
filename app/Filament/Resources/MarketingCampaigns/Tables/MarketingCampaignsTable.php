@@ -27,8 +27,18 @@ class MarketingCampaignsTable
     public static function calculatePromoStockStats(MarketingCampaign $campaign): array
     {
         $resolver = app(CampaignAudienceResolver::class);
-        $recipients = $campaign->target_instrument !== null
-            ? $resolver->resolve($campaign->target_segment, (bool) $campaign->is_test, $campaign->target_instrument)
+        $hasAdvancedFilters = filled($campaign->target_instrument)
+            || ($campaign->target_platform && $campaign->target_platform !== MarketingCampaign::PLATFORM_ALL)
+            || ($campaign->target_trial_status && $campaign->target_trial_status !== MarketingCampaign::TRIAL_STATUS_ALL);
+
+        $recipients = $hasAdvancedFilters
+            ? $resolver->resolve(
+                $campaign->target_segment,
+                (bool) $campaign->is_test,
+                $campaign->target_instrument,
+                $campaign->target_platform ?? MarketingCampaign::PLATFORM_ALL,
+                $campaign->target_trial_status ?? MarketingCampaign::TRIAL_STATUS_ALL
+            )
             : $resolver->resolve($campaign->target_segment, (bool) $campaign->is_test);
 
         if ($campaign->is_test) {
@@ -127,6 +137,39 @@ class MarketingCampaignsTable
                     ->placeholder('Todos')
                     ->color('gray'),
 
+                TextColumn::make('target_platform')
+                    ->label('Plataforma')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        MarketingCampaign::PLATFORM_ANDROID => 'Android',
+                        MarketingCampaign::PLATFORM_IOS => 'iOS',
+                        default => 'Todas',
+                    })
+                    ->color(fn (?string $state): string => match ($state) {
+                        MarketingCampaign::PLATFORM_ANDROID => 'success',
+                        MarketingCampaign::PLATFORM_IOS => 'info',
+                        default => 'gray',
+                    })
+                    ->toggleable(),
+
+                TextColumn::make('target_trial_status')
+                    ->label('Trial / Compra')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        MarketingCampaign::TRIAL_STATUS_ACTIVE => 'Trial Activo',
+                        MarketingCampaign::TRIAL_STATUS_EXPIRED => 'Trial Vencido',
+                        MarketingCampaign::TRIAL_STATUS_PRO => 'PRO',
+                        MarketingCampaign::TRIAL_STATUS_FREE => 'Free',
+                        default => 'Cualquiera',
+                    })
+                    ->color(fn (?string $state): string => match ($state) {
+                        MarketingCampaign::TRIAL_STATUS_ACTIVE => 'warning',
+                        MarketingCampaign::TRIAL_STATUS_EXPIRED => 'danger',
+                        MarketingCampaign::TRIAL_STATUS_PRO => 'success',
+                        default => 'gray',
+                    })
+                    ->toggleable(),
+
                 TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
@@ -222,6 +265,24 @@ class MarketingCampaignsTable
                         'Otro' => 'Otro',
                     ]),
 
+                SelectFilter::make('target_platform')
+                    ->label('Plataforma')
+                    ->options([
+                        MarketingCampaign::PLATFORM_ALL => 'Todas',
+                        MarketingCampaign::PLATFORM_ANDROID => 'Android',
+                        MarketingCampaign::PLATFORM_IOS => 'iOS',
+                    ]),
+
+                SelectFilter::make('target_trial_status')
+                    ->label('Estado Trial / Compra')
+                    ->options([
+                        MarketingCampaign::TRIAL_STATUS_ALL => 'Cualquiera',
+                        MarketingCampaign::TRIAL_STATUS_ACTIVE => 'Trial Activo',
+                        MarketingCampaign::TRIAL_STATUS_EXPIRED => 'Trial Vencido',
+                        MarketingCampaign::TRIAL_STATUS_PRO => 'PRO',
+                        MarketingCampaign::TRIAL_STATUS_FREE => 'Free',
+                    ]),
+
                 SelectFilter::make('status')
                     ->label('Estado')
                     ->options([
@@ -243,8 +304,18 @@ class MarketingCampaignsTable
                     ->modalHeading(fn (MarketingCampaign $record): string => $record->is_test ? 'Confirmar Envío de Prueba' : 'Confirmar Envío de Campaña')
                     ->modalDescription(function (MarketingCampaign $record): string {
                         $resolver = app(CampaignAudienceResolver::class);
-                        $count = $record->target_instrument !== null
-                            ? $resolver->count($record->target_segment, (bool) $record->is_test, $record->target_instrument)
+                        $hasAdvancedFilters = filled($record->target_instrument)
+                            || ($record->target_platform && $record->target_platform !== MarketingCampaign::PLATFORM_ALL)
+                            || ($record->target_trial_status && $record->target_trial_status !== MarketingCampaign::TRIAL_STATUS_ALL);
+
+                        $count = $hasAdvancedFilters
+                            ? $resolver->count(
+                                $record->target_segment,
+                                (bool) $record->is_test,
+                                $record->target_instrument,
+                                $record->target_platform ?? MarketingCampaign::PLATFORM_ALL,
+                                $record->target_trial_status ?? MarketingCampaign::TRIAL_STATUS_ALL
+                            )
                             : $resolver->count($record->target_segment, (bool) $record->is_test);
 
                         if ($record->is_test) {

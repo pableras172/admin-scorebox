@@ -23,6 +23,11 @@ final class ScoreBoxUser
         public readonly ?string $studyType,
         public readonly ?string $subscription,
         public readonly ?string $platform = null,
+        public readonly ?string $orderId = null,
+        public readonly ?int $trialStartDate = null,
+        public readonly ?string $cloudProvider = null,
+        public readonly ?string $cloudAccountEmail = null,
+        public readonly ?string $lastBackupAt = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -48,6 +53,11 @@ final class ScoreBoxUser
             studyType: self::asNullableString($data['studyType'] ?? null),
             subscription: self::asNullableString($data['subscription'] ?? $data['subscrition'] ?? null),
             platform: self::asNullableString($data['platform'] ?? null),
+            orderId: self::asNullableString($data['orderId'] ?? null),
+            trialStartDate: isset($data['trialStartDate']) && is_numeric($data['trialStartDate']) ? (int) $data['trialStartDate'] : null,
+            cloudProvider: self::asNullableString($data['cloudProvider'] ?? null),
+            cloudAccountEmail: self::asNullableString($data['cloudAccountEmail'] ?? null),
+            lastBackupAt: self::asNullableString($data['lastBackupAt'] ?? null),
         );
     }
 
@@ -70,7 +80,56 @@ final class ScoreBoxUser
             'studyType' => $this->studyType,
             'subscription' => $this->subscription,
             'platform' => $this->platform,
+            'orderId' => $this->orderId,
+            'trialStartDate' => $this->trialStartDate,
+            'trialStatus' => $this->getTrialStatus(),
+            'trialDaysRemaining' => $this->getTrialDaysRemaining(),
+            'cloudProvider' => $this->cloudProvider,
+            'cloudAccountEmail' => $this->cloudAccountEmail,
+            'lastBackupAt' => $this->lastBackupAt,
+            'cloudProviderLabel' => $this->getCloudProviderLabel(),
         ];
+    }
+
+    public function getCloudProviderLabel(): string
+    {
+        return match ($this->cloudProvider) {
+            'google_drive' => 'Google Drive',
+            'icloud_drive' => 'iCloud Drive',
+            'none' => 'Desactivado',
+            default => 'Sin Configurar',
+        };
+    }
+
+    /**
+     * Determine trial status: 'pro', 'trial_active', 'trial_expired', 'free'
+     */
+    public function getTrialStatus(): string
+    {
+        if ($this->isPremium || $this->subscription === 'lifetime' || $this->subscription === 'premium') {
+            return 'pro';
+        }
+
+        if ($this->trialStartDate !== null && $this->trialStartDate > 0) {
+            $nowMs = (int) round(microtime(true) * 1000);
+            $durationMs = 7 * 86400 * 1000; // 7 days
+
+            return ($nowMs < ($this->trialStartDate + $durationMs)) ? 'trial_active' : 'trial_expired';
+        }
+
+        return 'free';
+    }
+
+    public function getTrialDaysRemaining(): int
+    {
+        if ($this->getTrialStatus() !== 'trial_active' || $this->trialStartDate === null) {
+            return 0;
+        }
+
+        $nowMs = (int) round(microtime(true) * 1000);
+        $diffMs = ($this->trialStartDate + (7 * 86400 * 1000)) - $nowMs;
+
+        return max(0, (int) ceil($diffMs / (86400 * 1000)));
     }
 
     private static function asBoolean(mixed $value): bool

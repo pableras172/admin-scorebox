@@ -7,6 +7,7 @@ use App\Mail\UserSupportMailable;
 use App\Models\FirestoreUser;
 use App\Models\PromotionalCode;
 use App\Services\Firestore\FirestoreUserGateway;
+use App\Services\Firestore\ScoreBoxUser;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Textarea;
@@ -72,11 +73,13 @@ class ScoreBoxUsersTable
             $email = mb_strtolower(self::normalizeStringValue($user->email ?? null) ?? '');
             $uid = mb_strtolower(self::normalizeStringValue($user->uid ?? null) ?? '');
             $platform = mb_strtolower(self::normalizeStringValue($user->platform ?? null) ?? '');
+            $orderId = mb_strtolower(self::normalizeStringValue($user->orderId ?? null) ?? '');
 
             return str_contains($displayName, $normalizedTerm)
                 || str_contains($email, $normalizedTerm)
                 || str_contains($uid, $normalizedTerm)
-                || str_contains($platform, $normalizedTerm);
+                || str_contains($platform, $normalizedTerm)
+                || str_contains($orderId, $normalizedTerm);
         })->values();
     }
 
@@ -118,6 +121,23 @@ class ScoreBoxUsersTable
                     continue;
                 }
 
+                if ($key === 'cloud_provider') {
+                    $userCloud = mb_strtolower(self::normalizeStringValue($user->cloudProvider ?? null) ?? 'none');
+                    if ($userCloud !== mb_strtolower($normalizedValue)) {
+                        return false;
+                    }
+
+                    continue;
+                }
+
+                if ($key === 'trial_status') {
+                    if ((string) ($user->trialStatus ?? '') !== $normalizedValue) {
+                        return false;
+                    }
+
+                    continue;
+                }
+
                 if ($key === 'isPremium') {
                     $expected = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
 
@@ -151,6 +171,12 @@ class ScoreBoxUsersTable
             $users = collect($result->data() ?? [])
                 ->map(function (array $user, int|string $index): FirestoreUser {
                     $primaryKey = (string) ($user['uid'] ?? $index);
+                    $userPayload = $user;
+                    if (empty($userPayload['uid'])) {
+                        $userPayload['uid'] = $primaryKey;
+                    }
+                    $userObj = ScoreBoxUser::fromArray($userPayload);
+
                     $model = new FirestoreUser;
                     $model->forceFill([
                         'id' => $primaryKey,
@@ -170,6 +196,13 @@ class ScoreBoxUsersTable
                         'studyType' => self::normalizeStringValue($user['studyType'] ?? null),
                         'subscription' => self::normalizeStringValue($user['subscription'] ?? $user['subscrition'] ?? null),
                         'platform' => self::normalizeStringValue($user['platform'] ?? null),
+                        'orderId' => self::normalizeStringValue($user['orderId'] ?? null),
+                        'trialStartDate' => $userObj->trialStartDate,
+                        'trialStatus' => $userObj->getTrialStatus(),
+                        'trialDaysRemaining' => $userObj->getTrialDaysRemaining(),
+                        'cloudProvider' => self::normalizeStringValue($user['cloudProvider'] ?? null),
+                        'cloudAccountEmail' => self::normalizeStringValue($user['cloudAccountEmail'] ?? null),
+                        'lastBackupAt' => self::normalizeStringValue($user['lastBackupAt'] ?? null),
                     ]);
 
                     return $model;
@@ -270,6 +303,57 @@ class ScoreBoxUsersTable
                     })
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('trialStatus')
+                    ->label('Estado / Plan')
+                    ->badge()
+                    ->formatStateUsing(function (?string $state, FirestoreUser $record): string {
+                        return match ($state) {
+                            'pro' => 'PRO Vitalicio',
+                            'trial_active' => "Trial ({$record->trialDaysRemaining}d)",
+                            'trial_expired' => 'Trial Expirado',
+                            'free' => 'Gratis (Free)',
+                            default => $state ?: '-',
+                        };
+                    })
+                    ->color(fn (?string $state): string => match ($state) {
+                        'pro' => 'success',
+                        'trial_active' => 'warning',
+                        'trial_expired' => 'danger',
+                        'free' => 'gray',
+                        default => 'gray',
+                    })
+                    ->icon(fn (?string $state): ?string => match ($state) {
+                        'pro' => 'heroicon-m-check-badge',
+                        'trial_active' => 'heroicon-m-clock',
+                        'trial_expired' => 'heroicon-m-x-circle',
+                        default => null,
+                    })
+                    ->sortable(),
+                TextColumn::make('orderId')
+                    ->label('ID Pedido / Compra')
+                    ->searchable()
+                    ->copyable()
+                    ->copyMessage('ID copiado')
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('cloudProvider')
+                    ->label('Copia Nube')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'google_drive' => 'Google Drive',
+                        'icloud_drive' => 'iCloud Drive',
+                        default => 'Desactivado',
+                    })
+                    ->color(fn (?string $state): string => match ($state) {
+                        'google_drive' => 'info',
+                        'icloud_drive' => 'primary',
+                        default => 'gray',
+                    })
+                    ->icon(fn (?string $state): ?string => match ($state) {
+                        'google_drive', 'icloud_drive' => 'heroicon-m-cloud',
+                        default => null,
+                    })
+                    ->toggleable(),
                 IconColumn::make('isPremium')
                     ->label('Premium')
                     ->boolean(),
@@ -327,6 +411,23 @@ class ScoreBoxUsersTable
                         'ios' => 'iOS',
                     ])
                     ->placeholder('Todas las plataformas'),
+                SelectFilter::make('trial_status')
+                    ->label('Estado / Plan')
+                    ->options([
+                        'pro' => 'PRO (Vitalicio)',
+                        'trial_active' => 'Trial Activo (en prueba)',
+                        'trial_expired' => 'Trial Expirado',
+                        'free' => 'Gratis (Sin trial)',
+                    ])
+                    ->placeholder('Todos los planes'),
+                SelectFilter::make('cloud_provider')
+                    ->label('Copia en la Nube')
+                    ->options([
+                        'google_drive' => 'Google Drive',
+                        'icloud_drive' => 'iCloud Drive',
+                        'none' => 'Sin Copia / Desactivado',
+                    ])
+                    ->placeholder('Todos'),
                 TernaryFilter::make('isPremium')
                     ->label('Premium')
                     ->placeholder('Todos')

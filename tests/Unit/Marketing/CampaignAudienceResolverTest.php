@@ -119,6 +119,86 @@ final class CampaignAudienceResolverTest extends TestCase
         $this->assertSame(['premium@example.com', 'pro-sub@example.com'], $premiumRecipients->pluck('email')->all());
     }
 
+    public function test_it_filters_recipients_by_platform(): void
+    {
+        $mockUsers = [
+            [
+                'uid' => 'u1',
+                'email' => 'android@example.com',
+                'displayName' => 'Android User',
+                'platform' => 'android',
+                'isPremium' => false,
+            ],
+            [
+                'uid' => 'u2',
+                'email' => 'ios@example.com',
+                'displayName' => 'iOS User',
+                'platform' => 'ios',
+                'isPremium' => false,
+            ],
+        ];
+
+        $gateway = Mockery::mock(FirestoreUserGateway::class);
+        $gateway->shouldReceive('all')
+            ->twice()
+            ->andReturn(FirestoreResult::success($mockUsers, []));
+
+        $resolver = new CampaignAudienceResolver($gateway);
+
+        $androidOnly = $resolver->resolve(targetPlatform: MarketingCampaign::PLATFORM_ANDROID);
+        $this->assertCount(1, $androidOnly);
+        $this->assertSame('android@example.com', $androidOnly->first()->email);
+
+        $iosOnly = $resolver->resolve(targetPlatform: MarketingCampaign::PLATFORM_IOS);
+        $this->assertCount(1, $iosOnly);
+        $this->assertSame('ios@example.com', $iosOnly->first()->email);
+    }
+
+    public function test_it_filters_recipients_by_trial_status(): void
+    {
+        $nowMs = (int) round(microtime(true) * 1000);
+        $activeTrialStart = $nowMs - (2 * 86400 * 1000); // 2 days ago -> trial_active
+        $expiredTrialStart = $nowMs - (10 * 86400 * 1000); // 10 days ago -> trial_expired
+
+        $mockUsers = [
+            [
+                'uid' => 'u1',
+                'email' => 'active_trial@example.com',
+                'displayName' => 'Trial User',
+                'trialStartDate' => $activeTrialStart,
+                'isPremium' => false,
+            ],
+            [
+                'uid' => 'u2',
+                'email' => 'expired_trial@example.com',
+                'displayName' => 'Expired User',
+                'trialStartDate' => $expiredTrialStart,
+                'isPremium' => false,
+            ],
+            [
+                'uid' => 'u3',
+                'email' => 'free_no_trial@example.com',
+                'displayName' => 'Free User',
+                'isPremium' => false,
+            ],
+        ];
+
+        $gateway = Mockery::mock(FirestoreUserGateway::class);
+        $gateway->shouldReceive('all')
+            ->twice()
+            ->andReturn(FirestoreResult::success($mockUsers, []));
+
+        $resolver = new CampaignAudienceResolver($gateway);
+
+        $activeTrialOnly = $resolver->resolve(targetTrialStatus: MarketingCampaign::TRIAL_STATUS_ACTIVE);
+        $this->assertCount(1, $activeTrialOnly);
+        $this->assertSame('active_trial@example.com', $activeTrialOnly->first()->email);
+
+        $expiredTrialOnly = $resolver->resolve(targetTrialStatus: MarketingCampaign::TRIAL_STATUS_EXPIRED);
+        $this->assertCount(1, $expiredTrialOnly);
+        $this->assertSame('expired_trial@example.com', $expiredTrialOnly->first()->email);
+    }
+
     public function test_it_resolves_test_recipients_when_is_test_is_true(): void
     {
         config(['app.test_emails' => ['tester1@example.com', 'tester2@example.com']]);
